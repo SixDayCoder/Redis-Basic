@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include "sds.h"
-int main() {
-    sds cmd = sdsnew("happysfkdsaflkjafl");
-    printf("%s\n", cmd);
+int main()
+{
+    sds cmd = sdsnew("hap");
+    cmd = sdsgrowzero(cmd, 5);
+    struct sdshdr *sh = SDS_2_SDSHDR(cmd);
+    printf("%s\n", sh->buf);
     return 0;
 }
