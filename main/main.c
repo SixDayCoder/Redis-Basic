@@ -1,6 +1,7 @@
 #include <stdio.h>
-
+#include "sds.h"
 int main() {
-    printf("Hello, World!\n");
+    sds cmd = sdsnew("happysfkdsaflkjafl");
+    printf("%s\n", cmd);
     return 0;
 }
