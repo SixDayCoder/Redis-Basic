@@ -28,7 +28,7 @@ sds sdsnewlen(const void* init, size_t initlen)
     }
 
     //内存分配失败
-    if(sh == NULL)
+    if(!sh)
     {
         return  NULL;
     }
@@ -63,7 +63,7 @@ sds sdsdup(const sds s)
 //析构sds
 void sdsfree(sds s)
 {
-    if(s == NULL)
+    if(!s)
     {
         return;
     }
