@@ -3,7 +3,7 @@
 //
 
 #include "sds.h"
-
+#include <stdarg.h>
 
 //根据char指针,构造sds
 sds sdsnew(const char* init)
@@ -11,7 +11,6 @@ sds sdsnew(const char* init)
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return  sdsnewlen(init, initlen);
 }
-
 
 //给定长度和初始数据,构造sds
 sds sdsnewlen(const void* init, size_t initlen)
@@ -128,4 +127,279 @@ sds sdsgrowzero(sds s, size_t len)
     sh->len = len;
     sh->free = totlen - len;
     return  s;
+}
+
+//将长度为len的data数据添加到s的末尾
+sds sdscatlen(sds s, const void* data, size_t len)
+{
+    size_t oldlen = sdslen(s);
+    s = sdsMakeRoomFor(s, len);
+    if(s == NULL)
+    {
+        return  NULL;
+    }
+
+    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    memcpy(s + oldlen, data, len);
+    s[oldlen + len] = '\0';
+
+    sh->len = oldlen + len;
+    sh->free = sh->free - len;
+
+    return s;
+}
+
+//将字符串str添加到s的末尾
+sds sdscat(sds s, const char* str)
+{
+    return sdscatlen(s, str, strlen(str));
+}
+
+//将sds类型的data添加到s的末尾
+sds sdscatsds(sds s, const sds data)
+{
+    struct sdshdr* sh = SDS_2_SDSHDR(data);
+    return  sdscatlen(s, sh->buf, sh->len);
+}
+
+//复制字符串data的前len个字符替换s的内容
+sds sdscpylen(sds s, const char* data, size_t len)
+{
+    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    size_t totlen = sh->free + sh->len;
+    //如果空间不够先分配空间
+    if(totlen < len)
+    {
+        s = sdsMakeRoomFor(s, len - totlen);
+        if(s == NULL)
+        {
+            return  NULL;
+        }
+        sh = SDS_2_SDSHDR(s);
+        totlen = sh->len + sh->free;
+    }
+
+    //copy data
+    memcpy(s, data, len);
+    s[len] = '\0';
+
+    //update sh
+    sh->len = len;
+    sh->free = totlen - len;
+
+    return s;
+}
+
+//复制字符串data替换s的内容
+sds sdscpy(sds s, const char* data)
+{
+    return sdscpylen(s, data, strlen(data));
+}
+
+//longlong转字符串,返回该字符串的长度
+size_t sdsll2str(char *s, long long value)
+{
+    char *p;
+    unsigned long long v = (unsigned long long)llabs(value);
+    p = s;
+    do {
+        *p++ = '0'+ (v % 10);
+        v /= 10;
+    } while(v);
+    if (value < 0) *p++ = '-';
+
+    //计算字符串长度
+    size_t ret = p-s;
+    *p = '\0';
+    //翻转字符串
+    SDS_REVERSE(s, p);
+    return ret;
+}
+
+//unsignedlonglong转字符串,返回该字符串的长度
+size_t sdsull2str(char *s, unsigned long long v)
+{
+    char *p;
+    p = s;
+    do {
+        *p++ = '0'+(v % 10);
+        v /= 10;
+    } while(v);
+
+    //计算字符串长度
+    size_t ret = p-s;
+    *p = '\0';
+    //翻转字符串
+    SDS_REVERSE(s, p);
+    return ret;
+}
+
+//将要打印的内容copy到sds的末尾并返回
+sds sdscatvprintf(sds s, const char *fmt, va_list ap) {
+    va_list cpy;
+    char staticbuf[1024];
+    char *buf = staticbuf;
+    //为何要*2: 类似printf("i am %s")还会填充s,所以初始化buf的长度是fmt两倍的大小
+    size_t buflen = strlen(fmt) * 2;
+
+    //为了性能,尝试使用栈空间,如果不足再动态分配内存
+    if (buflen > sizeof(staticbuf)) {
+        buf = zmalloc(buflen);
+        if (buf == NULL) {
+            return NULL;
+        }
+    } else {
+        buflen = sizeof(staticbuf);
+    }
+
+    //注:
+    //int vsnprintf(char *str, size_t size, const char *format, va_list ap);
+    //将可变参数格式化输出到一个字符数组
+    //ret：-1表示格式化出错,很可能是encoding的问题
+    //ret: 非负且<size才说明写入成功
+    while (1) {
+        va_copy(cpy, ap);
+        int nret = vsnprintf(buf, buflen, fmt, cpy);
+        if (nret > 0 && nret < buflen) {
+            break;
+        }
+            //每次vsnprintf失败,扩充buf的长度为原先的两倍
+        else {
+            //如果是动态分配的buf,释放
+            if (buf != staticbuf) {
+                zfree(buf);
+            }
+            buflen *= 2;
+            buf = zmalloc(buflen);
+            if (buf == NULL) {
+                return NULL;
+            }
+            continue;
+        }
+    }
+
+    //copy到sds的末尾
+    sds ret = sdscat(s, buf);
+    //如果是动态分配的buf,释放
+    if (buf != staticbuf) {
+        zfree(buf);
+    }
+    return ret;
+}
+
+//将要打印的内容copy到sds的末尾并返回
+sds sdscatprintf(sds s, const char *fmt, ...)
+{
+    va_list ap;
+    //fetch the right args : the arg before ...
+    va_start(ap, fmt);
+    sds ret  = sdscatvprintf(s, fmt, ap);
+    //set ap invalid
+    va_end(ap);
+    return ret;
+}
+
+//将要打印的内容copy到sds的末尾(很快)
+sds sdscatfmt(sds s, char const *fmt, ...)
+{
+    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    char  next, buf[SDS_LONG_2_STR_SIZE];
+    char* str;
+    size_t size;
+    long long number;
+    unsigned long long unumber;
+
+    va_list ap;
+    va_start(ap, fmt);
+
+    const char* curr = fmt; //接下来要被解析的fmt中的字符
+    size_t index = sh->len;  //sds的当前可被添加字符的buf下标
+    while(*curr)
+    {
+        SDS_MAKE_SURE_HAVE_FREE(s, sh, 1);//确保s至少有一个byte的空间
+        switch(*curr)
+        {
+            case '%':
+                next = *(curr + 1);
+                //curr++;
+                switch(next)
+                {
+                    case 's'://s表示是c内置的char数组
+                    case 'S'://S表示是redis内部的sds
+                        str = va_arg(ap, char*);
+                        size = (next == 's') ? strlen(str) : sdslen(str);
+                        SDS_MAKE_SURE_HAVE_FREE(s, sh, size);
+                        memcpy(s + index, str, size);
+                        sh->len += size;
+                        sh->free -= size;
+                        index += size;
+                        break;
+                    case 'i'://int
+                    case 'I'://long
+                        number = (next == 'i') ? va_arg(ap, int) : va_arg(ap, long long);
+                        memset(buf, 0, sizeof(buf));
+                        size = (size_t)sdsll2str(buf, number);
+                        SDS_MAKE_SURE_HAVE_FREE(s, sh, size);
+                        memcpy(s + index, buf, size);
+                        sh->len += size;
+                        sh->free -= size;
+                        index += size;
+                        break;
+                    case 'u'://unsigned int
+                    case 'U'://unsigned long long
+                        unumber = (next == 'u') ? va_arg(ap, unsigned int) : va_arg(ap, unsigned long long);
+                        memset(buf, 0, sizeof(buf));
+                        size = (size_t)sdsull2str(buf, unumber);
+                        SDS_MAKE_SURE_HAVE_FREE(s, sh, size);
+                        memcpy(s + index, buf, size);
+                        sh->len += size;
+                        sh->free -= size;
+                        index += size;
+                        break;
+                    default:
+                        s[index++] = next;
+                        sh->len++;
+                        sh->free--;
+                        break;
+                }
+                break;
+            default:
+                s[index++] = *curr;
+                sh->len++;
+                sh->free--;
+                break;
+        }
+        curr++;
+    }
+    va_end(ap);
+    s[index] = '\0';
+    return s;
+}
+
+//sds两端trim掉cset中所有的字符
+sds sdstrim(sds s, const char *cset)
+{
+    struct sdshdr *sh = SDS_2_SDSHDR(s);
+
+    char* sp = s;//start point
+    char* ep = s + sh->len - 1;//end pointer
+
+    //strchr(string, char) string中首次出现char的位置
+    while(sp <= ep && strchr(cset, *sp)) sp++;
+    while(ep >  sp && strchr(cset, *ep)) ep--;
+
+    size_t len = (ep > sp) ? (ep - sp + 1) : 0;
+
+    //如果有需要,需要把trim后的字符串前移
+    if(sh->buf != sp)
+    {
+        //[sp, sp + len)移动到sh->buf
+        memmove(sh->buf, sp, len);
+    }
+    sh->buf[len] = '\0';
+
+    //更新sh的属性
+    sh->free += sh->len - len;//oldlen - newlen;
+    sh->len = len;
+    return s;
 }

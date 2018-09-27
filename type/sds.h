@@ -19,10 +19,36 @@ struct sdshdr
     //3.数据空间
     char buf[];
 };
+
 #define SDS_MAX_PREALLOC_SIZE (1024 * 1024)
+
 #define SDS_HEADER_SIZE (sizeof(struct sdshdr))
+
 #define SDS_TAIL_SYMBOL_SIZE (1)
+
+#define SDS_LONG_2_STR_SIZE (21)
+
 #define SDS_2_SDSHDR(_s) ( (void*)(_s - SDS_HEADER_SIZE) )
+
+#define SDS_MAKE_SURE_HAVE_FREE(_s, _sh, _size) do {\
+    if(_sh->free < _size)\
+    {\
+        _s = sdsMakeRoomFor(_s, _size);\
+        _sh = SDS_2_SDSHDR(_s);\
+    }\
+}while(0);
+
+#define SDS_REVERSE(_start, _end) do {\
+    _end--;\
+    char tmp;\
+    while(_start < _end) {\
+        tmp = *_start;\
+        *_start = *_end;\
+        *_end = tmp;\
+        _start++;\
+        _end--;\
+    };\
+}while(0);
 
 
 //根据buf返回buf的长度
@@ -38,7 +64,6 @@ static inline size_t sdsvail(const sds buf)
     struct sdshdr* sh = (void*)(buf - SDS_HEADER_SIZE);
     return sh->free;
 }
-
 
 //根据char指针,构造sds
 sds sdsnew(const char* init);
@@ -61,6 +86,38 @@ sds sdsMakeRoomFor(sds s, size_t addlen);
 //填充s到指定长度,末尾以0填充
 sds sdsgrowzero(sds s, size_t len);
 
+//将长度为len的data数据添加到s的末尾
+sds sdscatlen(sds s, const void* data, size_t len);
+
+//将字符串str添加到s的末尾
+sds sdscat(sds s, const char* str);
+
+//将sds类型的data添加到s的末尾
+sds sdscatsds(sds s, const sds data);
+
+//复制字符串data的前len个字符替换s的内容
+sds sdscpylen(sds s, const char* data, size_t len);
+
+//复制字符串data替换s的内容
+sds sdscpy(sds s, const char* data);
+
+//longlong转字符串,返回该字符串的长度
+size_t sdsll2str(char *s, long long value);
+
+//unsignedlonglong转字符串,返回该字符串的长度
+size_t sdsull2str(char *s, unsigned long long v);
+
+//将要打印的内容copy到sds的末尾并返回
+sds sdscatvprintf(sds s, const char *fmt, va_list ap);
+
+//将要打印的内容copy到sds的末尾并返回
+sds sdscatprintf(sds s, const char *fmt, ...);
+
+//将要打印的内容copy到sds的末尾(很快)
+sds sdscatfmt(sds s, char const *fmt, ...);
+
+//sds两端trim掉cset中所有的字符
+sds sdstrim(sds s, const char *cset);
 
 #endif //REDIS_BASIC_SDS_H
 

@@ -6,7 +6,7 @@
 
 void* zmalloc(size_t size)
 {
-    void *ptr = malloc(size + ZMALLOC_PREFIX_SIZE);
+    void *ptr = malloc(ZMALLOC_PREFIX_SIZE + size);
     if(!ptr)
     {
         zmalloc_oom_handler(size);
@@ -21,7 +21,7 @@ void* zmalloc(size_t size)
 void* zcalloc(size_t size)
 {
     //calloc(cout, size)
-    void *ptr = calloc(1, size + ZMALLOC_PREFIX_SIZE);
+    void *ptr = calloc(1, ZMALLOC_PREFIX_SIZE + size);
     if(!ptr)
     {
         zmalloc_oom_handler(size);
@@ -46,7 +46,7 @@ void* zrealloc(void *ptr, size_t size)
     realptr = ((char*)ptr - ZMALLOC_PREFIX_SIZE);
     //强转解引用,获取分配的内存的大小
     oldsize = *((size_t*)realptr);
-    newptr = realloc(realptr, size + ZMALLOC_PREFIX_SIZE);
+    newptr = realloc(realptr, ZMALLOC_PREFIX_SIZE + size);
     if(!newptr)
     {
         zmalloc_oom_handler(size);
