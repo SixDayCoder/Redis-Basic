@@ -73,13 +73,13 @@ void sdsfree(sds s)
 //sds的末尾扩充addlen个byte大小的内存
 sds sdsMakeRoomFor(sds s, size_t addlen)
 {
-    size_t free = sdsvail(s);
-    if(free >= addlen)
+    struct sdshdr *sh = SDS_SDSHDR(s);
+
+    if(sh->free >= addlen)
     {
         return  s;
     }
 
-    struct sdshdr *sh = SDS_SDSHDR(s);
     size_t  oldlen = sh->len;
     size_t  newlen = (oldlen + addlen);
 
