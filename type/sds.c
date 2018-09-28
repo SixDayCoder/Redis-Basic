@@ -78,7 +78,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen)
         return  s;
     }
 
-    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    struct sdshdr *sh = SDS_SDSHDR(s);
     size_t  oldlen = sh->len;
     size_t  newlen = (oldlen + addlen);
 
@@ -104,7 +104,7 @@ sds sdsMakeRoomFor(sds s, size_t addlen)
 //填充s到指定长度,末尾以0填充
 sds sdsgrowzero(sds s, size_t len)
 {
-    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    struct sdshdr *sh = SDS_SDSHDR(s);
     size_t currlen = sh->len;
     if(len <= currlen)
     {
@@ -118,7 +118,7 @@ sds sdsgrowzero(sds s, size_t len)
         return  NULL;
     }
 
-    sh = SDS_2_SDSHDR(s);
+    sh = SDS_SDSHDR(s);
     size_t  totlen = sh->len + sh->free;
     //重置新加的内存空间为0,等同于
     //memset(s + currlen, 0, appendsize )
@@ -139,7 +139,7 @@ sds sdscatlen(sds s, const void* data, size_t len)
         return  NULL;
     }
 
-    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    struct sdshdr *sh = SDS_SDSHDR(s);
     memcpy(s + oldlen, data, len);
     s[oldlen + len] = '\0';
 
@@ -158,14 +158,14 @@ sds sdscat(sds s, const char* str)
 //将sds类型的data添加到s的末尾
 sds sdscatsds(sds s, const sds data)
 {
-    struct sdshdr* sh = SDS_2_SDSHDR(data);
+    struct sdshdr* sh = SDS_SDSHDR(data);
     return  sdscatlen(s, sh->buf, sh->len);
 }
 
 //复制字符串data的前len个字符替换s的内容
 sds sdscpylen(sds s, const char* data, size_t len)
 {
-    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    struct sdshdr *sh = SDS_SDSHDR(s);
     size_t totlen = sh->free + sh->len;
     //如果空间不够先分配空间
     if(totlen < len)
@@ -175,7 +175,7 @@ sds sdscpylen(sds s, const char* data, size_t len)
         {
             return  NULL;
         }
-        sh = SDS_2_SDSHDR(s);
+        sh = SDS_SDSHDR(s);
         totlen = sh->len + sh->free;
     }
 
@@ -302,8 +302,8 @@ sds sdscatprintf(sds s, const char *fmt, ...)
 //将要打印的内容copy到sds的末尾(很快)
 sds sdscatfmt(sds s, char const *fmt, ...)
 {
-    struct sdshdr *sh = SDS_2_SDSHDR(s);
-    char  next, buf[SDS_LONG_2_STR_SIZE];
+    struct sdshdr *sh = SDS_SDSHDR(s);
+    char  next, buf[SDS_LONG_INT_STR_SIZE];
     char* str;
     size_t size;
     long long number;
@@ -379,7 +379,7 @@ sds sdscatfmt(sds s, char const *fmt, ...)
 //sds两端trim掉cset中所有的字符
 sds sdstrim(sds s, const char *cset)
 {
-    struct sdshdr *sh = SDS_2_SDSHDR(s);
+    struct sdshdr *sh = SDS_SDSHDR(s);
 
     char* sp = s;//start point
     char* ep = s + sh->len - 1;//end pointer
@@ -401,5 +401,238 @@ sds sdstrim(sds s, const char *cset)
     //更新sh的属性
     sh->free += sh->len - len;//oldlen - newlen;
     sh->len = len;
+    return s;
+}
+
+//按照索引取sds字符串中的一段
+void sdsrange(sds s, int start, int end)
+{
+    struct sdshdr *sh = SDS_SDSHDR(s);
+    size_t oldlen = sh->len;
+
+    if(oldlen == 0) return;;
+    if(start < 0)
+    {
+        start += oldlen;
+        if(start < 0) start = 0;
+    }
+    if(end < 0)
+    {
+        end += oldlen;
+        if(end < 0) end = 0;
+    }
+
+    int newlen = (end > start) ? (end - start + 1) : 0;
+    if(newlen != 0)
+    {
+        if(start >= (int)oldlen)
+        {
+            newlen = 0;
+        }
+        else if(end >= (int)oldlen)
+        {
+            end = (int)oldlen - 1;
+            newlen = (end > start) ? (end - start + 1) : 0;
+        }
+    }
+    else
+    {
+        start = 0;
+    }
+
+    if(start && newlen) memcpy(sh->buf, sh->buf + start, (size_t)newlen);
+    sh->buf[newlen] = '\0';
+
+    sh->free += (int)oldlen - newlen;
+    sh->len = (size_t)newlen;
+}
+
+//置s为空字符串,不释放内存
+void sdsclear(sds s)
+{
+    if(s == NULL)
+    {
+        return;
+    }
+
+    struct sdshdr *sh = SDS_SDSHDR(s);
+    memset(sh->buf, 0, sh->len);
+    sh->free += sh->len;
+    sh->len = 0;
+    sh->buf[0] = '\0';
+}
+
+//lhs == rhs 返回0, lhs < rhs返回负数, lhs > rhs返回正数
+int sdscmp(const sds lhs, const sds rhs)
+{
+    size_t llen = sdslen(lhs);
+    size_t rlen = sdslen(rhs);
+    size_t minlen = llen < rlen ? llen : rlen;
+
+    int cmp = memcmp(lhs, rhs, minlen);
+    if(cmp == 0)
+    {
+        return  (int)(llen - rlen);
+    }
+
+    return cmp;
+}
+
+//将s以分隔符sep划分,分成一个sds的数组存储在, count是该数组的长度
+sds* sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count)
+{
+    if(seplen < 1 || sep == NULL || count == NULL || s == NULL) return NULL;
+
+    size_t slots = 5;
+    sds*   list;
+    list = zmalloc(slots * sizeof(sds));
+    if(list == NULL) return NULL;
+
+    if(len == 0)
+    {
+        *count = 0;
+        return NULL;
+    }
+
+    int elements = 0;
+    int index = 0;
+
+    //len - (seplen - 1) : 如果s的最后一个字符(分隔符也可能是字符串)是分隔符,那么不需要再分割
+    for(int i = 0 ; i  < (len - (seplen - 1)); i++)
+    {
+        //确保返回的list至少有下一个元素的空间+末尾元素
+        if(slots < elements + 2)
+        {
+            slots *= 2;
+            sds *newlist = zrealloc(list, sizeof(sds) * (slots));
+            if(newlist == NULL) goto cleanup;
+            list = newlist;
+        }
+        //匹配到了分隔符
+        if((seplen == 1 && *(s + i) == sep[0]) || memcmp(s + i, sep, (size_t)seplen) == 0)
+        {
+            list[elements] = sdsnewlen(s + index, (size_t)(i - index));
+            if(list[elements] == NULL) goto cleanup;
+            elements++;
+            index = i + seplen;
+            i += (seplen - 1);
+        }
+    }
+
+    //添加分割完后的最后一个元素
+    list[elements] = sdsnewlen(s + index, (size_t)(len- index));
+    if(list[elements] == NULL) goto cleanup;
+    elements++;
+    *count = elements;
+    return  list;
+
+    //goto:for clean datas
+    cleanup:
+    {
+        sdslistfree(list, elements);
+        *count = 0;
+        return  NULL;
+    }
+}
+
+//释放sds的数组
+void sdslistfree(sds *sdslist, int count)
+{
+    if(!sdslist) return;
+    while(count--)
+    {
+        sdsfree(sdslist[count]);
+    }
+    zfree(sdslist);
+}
+
+//字符全转为小写
+void sdstolower(sds s)
+{
+    if(!s) return;
+    size_t len = sdslen(s);
+    for(size_t i = 0 ; i < len; ++i)
+    {
+        s[i] = tolower(s[i]);
+    }
+}
+
+//字符全转为大写
+void sdstoupper(sds s)
+{
+    if(!s) return;
+    size_t len = sdslen(s);
+    for(size_t i = 0 ; i < len; ++i)
+    {
+        s[i] = toupper(s[i]);
+    }
+}
+
+//long long转sds
+sds sdsfromlonglong(long long value)
+{
+    char buf[SDS_LONG_INT_STR_SIZE];
+    size_t len = sdsll2str(buf, value);
+    return  sdsnewlen(buf, len);
+}
+
+//将长度为len的字符串p,转义后追加到s的后边
+sds sdscatrepr(sds s, const char *p, size_t len)
+{
+    //1.将引号添加到s的末尾
+    s = sdscatlen(s, "\"", 1);
+
+    //2.遍历字符串p
+    while(len--)
+    {
+        switch(*p)
+        {
+            case '\\':
+            case '"' :
+                s = sdscatprintf(s, "\\%c", *p);
+                break;
+            case '\n':s = sdscatlen(s, "\\n", 2); break;
+            case '\r':s = sdscatlen(s, "\\r", 2); break;
+            case '\t':s = sdscatlen(s, "\\t", 2); break;
+            case '\a':s = sdscatlen(s, "\\a", 2); break;
+            case '\b':s = sdscatlen(s, "\\b", 2); break;
+            default:
+                //检查当前字符是否可打印
+                if(isprint(*p))
+                {
+                    s = sdscatprintf(s, "%c", *p);
+                }
+                else
+                {
+                    s = sdscatprintf(s, "\\x%02x", (unsigned char)*p);
+                }
+                break;
+        }
+        p++;
+    }
+    return sdscatlen(s, "\"", 1);
+}
+
+//将s中的所有出现在from中的字符替换成to中的字符
+sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen)
+{
+    if(s == NULL || from == NULL || to == NULL) return s;
+
+    if(strlen(from) != strlen(to)) return s;
+
+    if(strlen(from) != setlen) return s;
+
+    size_t len = sdslen(s);
+    for(size_t i = 0 ; i < len; ++i)
+    {
+        for(size_t j = 0; j < setlen; ++j)
+        {
+            if(from[j] == s[i])
+            {
+                s[i] = to[j];
+                break;
+            }
+        }
+    }
     return s;
 }

@@ -26,15 +26,15 @@ struct sdshdr
 
 #define SDS_TAIL_SYMBOL_SIZE (1)
 
-#define SDS_LONG_2_STR_SIZE (21)
+#define SDS_LONG_INT_STR_SIZE (21)
 
-#define SDS_2_SDSHDR(_s) ( (void*)(_s - SDS_HEADER_SIZE) )
+#define SDS_SDSHDR(_s) ( (void*)(_s - SDS_HEADER_SIZE) )
 
 #define SDS_MAKE_SURE_HAVE_FREE(_s, _sh, _size) do {\
     if(_sh->free < _size)\
     {\
         _s = sdsMakeRoomFor(_s, _size);\
-        _sh = SDS_2_SDSHDR(_s);\
+        _sh = SDS_SDSHDR(_s);\
     }\
 }while(0);
 
@@ -118,6 +118,34 @@ sds sdscatfmt(sds s, char const *fmt, ...);
 
 //sds两端trim掉cset中所有的字符
 sds sdstrim(sds s, const char *cset);
+
+//按照索引取sds字符串中的一段
+void sdsrange(sds s, int start, int end);
+
+//置s为空字符串,不释放内存
+void sdsclear(sds s);
+
+//lhs == rhs 返回0, lhs < rhs返回负数, lhs > rhs返回正数
+int sdscmp(const sds lhs, const sds rhs);
+
+//将s以分隔符sep划分,分成一个sds的数组存储在, count是该数组的长度
+sds* sdssplitlen(const char *s, int len, const char *sep, int seplen, int *count);
+
+//释放sds的数组
+void sdslistfree(sds *sdslist, int count);
+
+//字符全转为小写
+void sdstolower(sds s);
+
+//字符全转为大写
+void sdstoupper(sds s);
+
+//long long转sds
+sds sdsfromlonglong(long long value);
+
+//将s中的所有出现在from中的字符替换成to中的字符
+sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
+
 
 #endif //REDIS_BASIC_SDS_H
 
