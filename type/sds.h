@@ -30,6 +30,11 @@ struct sdshdr
 
 #define SDS_SDSHDR(_s) ( (void*)(_s - SDS_HEADER_SIZE) )
 
+#define SDS_ALLOC_SIZE(_s) do {\
+    struct sdshdr *sh = SDS_SDSHDR(_s);\
+    return sizeof(*sh) + sh->len + sh->free + 1;\
+}while(0);
+
 #define SDS_MAKE_SURE_HAVE_FREE(_s, _sh, _size) do {\
     if(_sh->free < _size)\
     {\
@@ -145,6 +150,12 @@ sds sdsfromlonglong(long long value);
 
 //将s中的所有出现在from中的字符替换成to中的字符
 sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen);
+
+//s的剩余空间去掉incr,末尾补'\0'
+void sdsIncrLen(sds s, int incr);
+
+//回收s的剩余空间
+sds sdsRemoveFreeSpace(sds s);
 
 
 #endif //REDIS_BASIC_SDS_H

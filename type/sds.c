@@ -4,6 +4,7 @@
 
 #include "sds.h"
 #include <stdarg.h>
+#include <assert.h>
 
 //根据char指针,构造sds
 sds sdsnew(const char* init)
@@ -635,4 +636,26 @@ sds sdsmapchars(sds s, const char *from, const char *to, size_t setlen)
         }
     }
     return s;
+}
+
+//s的剩余空间去掉incr,末尾补'\0'
+void sdsIncrLen(sds s, int incr)
+{
+    if(!s) return;
+
+    struct sdshdr *sh = SDS_SDSHDR(s);
+    assert(sh->free >= incr);
+
+    sh->free -= incr;
+    sh->len += incr;
+    s[sh->len] = '\0';
+}
+
+//回收s的剩余空间
+sds sdsRemoveFreeSpace(sds s)
+{
+    struct sdshdr *sh = SDS_SDSHDR(s);
+    sh = zrealloc(sh, SDS_HEADER_SIZE + sh->len + 1);
+    sh->free = 0;
+    return  sh->buf;
 }
