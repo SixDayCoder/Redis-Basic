@@ -2,6 +2,11 @@
 // Created by Administrator on 2018/9/26.
 //
 
+/*
+ * memory 只管理内存的分配 or 释放, 不对所申请的内存赋值, 仅仅对内存的管理字段赋值
+ *        例如: sds中, 仅对记录sds对象长度的字段赋值(外层不可见), 而不会对sds属性赋值
+ */
+
 #include "memory.h"
 
 void* zmalloc(size_t size)
