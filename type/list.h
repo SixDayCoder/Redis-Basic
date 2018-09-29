@@ -57,7 +57,7 @@ typedef struct list
     void *(*free)(void *ptr);
 
     //函数指针:节点值对比函数
-    int  *(*match)(void *ptr);
+    int  *(*match)(void *ptr, void *key);
 }list;
 
 
@@ -92,6 +92,33 @@ list* listPushTail(list *ls, void* value);
 //将值为value的node插在old_node的前面或后面,由after决定
 list* listInsertNode(list *ls, listNode *oldnode, void *value, int after);
 
+//复制一份ls内容和orig一致
+list* listDup(list *orig);
+
 //删除ls的node结点
 void listDelNode(list *ls, listNode *node);
+
+//获取list的迭代器
+listIter* listGetIterator(list *ls, int direction);
+
+//释放listIter
+void listReleaseIterator(listIter *iter);
+
+//根据迭代器获取下一个listNode
+listNode* listNext(listIter *iter);
+
+//将迭代器方向设置为forward,然后迭代器指向列表的头结点
+void listIterResetForward(list *ls, listIter *iter);
+
+//将迭代器方向设置为backward,然后迭代器指向列表的尾结点
+void listIterResetBackward(list *ls, listIter *iter);
+
+//在list中查找value为key的node
+listNode* listSearchKey(list *ls, void *key);
+
+//查找list[index],从0开始,如果index是负数,那么-1表示最后一个结点,相当于list[len-1]
+listNode* listIndex(list *ls, long index);
+
+//旋转ls列表
+void listRotate(list *ls);
 #endif //REDIS_BASIC_LIST_H
