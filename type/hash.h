@@ -84,6 +84,11 @@ typedef struct hashMethod
 // 返回给定节点的无符号整数值
 #define HASH_NODE_GET_UNSIGNED_INT(he) ((he)->v.u64)
 
+// 将一个有符号整数设为节点的值
+#define HASH_NODE_SET_SIGNED_INT_VAL(entry, _val)  ( entry->v.s64 = _val)
+
+// 将一个无符号整数设为节点的值
+#define HASH_NODE_SET_UNSIGNED_INT_VAL(entry, _val) ( entry->v.u64 = _val)
 
 //初始化哈希表的各项属性
 void hashTableInit(hashTable* ht);

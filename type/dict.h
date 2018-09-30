@@ -55,37 +55,45 @@ typedef struct dictIterator
     long long fingerprint;
 } dictIterator;
 
+//判断字典是否是空
+#define DICT_IS_EMPTY(d) ( d->ht[0].size == 0 )
+
+// 查看字典是否正在 rehash
+#define DICT_IS_REHASH(d) ((d)->rehashindex != -1)
+
+// 返回给定字典的大小
+#define DICT_TOTAL_SIZE(d) ((d)->ht[0].size+(d)->ht[1].size)
+
+// 返回字典的已有节点数量
+#define DICT_NODE_COUNT(d) ((d)->ht[0].used+(d)->ht[1].used)
+
+
 //释放给定字典节点的值
-#define DICT_FREE_VAL(d, entry) do {\
+#define DICT_FREE_HASH_NODE_VAL(d, node) do {\
     if((d)->method->valDestructor)\
-        (d)->method->valDestructor((d)->privdata, (entry)->v.val)\
+        (d)->method->valDestructor((d)->privdata, (node)->v.val);\
 }while(0)
 
 //设置给定字典节点的值
-#define DICT_SET_VAL(d, entry, _val) do {\
+#define DICT_SET_HASH_NODE_VAL(d, node, _val) do {\
     if((d)->method->valDup)\
-        entry->v.val = (d)->method->valDup((d)->privdata, (_val));\
-        else\
-            entry->v.val = (_val);\
+        node->v.val = (d)->method->valDup((d)->privdata, (_val));\
+    else\
+        node->v.val = (_val);\
 }while(0)
 
-// 将一个有符号整数设为节点的值
-#define DICT_SET_SIGNED_INT_VAL(entry, _val)  ( entry->v.s64 = _val)
-
-// 将一个无符号整数设为节点的值
-#define DICT_SET_UNSIGNED_INT_VAL(entry, _val) ( entry->v.u64 = _val)
-
 // 释放给定字典节点的键
-#define DICT_FREE_KEY(d, entry) \
+#define DICT_FREE_HASH_NODE_KEY(d, node) do {\
     if ((d)->method->keyDestructor) \
-        (d)->method->keyDestructor((d)->privdata, (entry)->key)
+        (d)->method->keyDestructor((d)->privdata, (node)->key);\
+} while(0)
 
 // 设置给定字典节点的键
-#define DICT_SET_KEY(d, entry, _key) do { \
+#define DICT_SET_HASH_NODE_KEY(d, node, _key) do { \
     if ((d)->method->keyDup) \
-        entry->key = (d)->method->keyDup((d)->privdata, _key); \
+        node->key = (d)->method->keyDup((d)->privdata, _key); \
     else \
-        entry->key = (_key); \
+        node->key = (_key); \
 } while(0)
 
 // 比对两个key
@@ -94,17 +102,11 @@ typedef struct dictIterator
 // 计算给定键的哈希值
 #define DICT_HASH_KEY(d, key) (d)->method->hashFunction(key)
 
-// 返回给定字典的大小
-#define DICT_TOTAL_SIZE(d) ((d)->ht[0].size+(d)->ht[1].size)
-
-// 返回字典的已有节点数量
-#define DICT_NODE_COUNT(d) ((d)->ht[0].used+(d)->ht[1].used)
-
-// 查看字典是否正在 rehash
-#define DICT_IS_REHASH(d) ((d)->rehashindex != -1)
-
 //创建空字典
 dict* dictCreate(hashMethod* method, void* privdata);
+
+//释放字典
+void dictRelease(dict *d);
 
 //扩展或者创建一个dict
 //(1)如果字典的ht[0]是空的,新的哈希表就是0号
@@ -116,9 +118,24 @@ int dictExpand(dict *d, unsigned long size);
 //返回0表示rehash完毕,否则表示仍然有键需要从0号哈希表移动到1号哈希表
 int dictRehash(dict *d, int n);
 
+//在字典中找到键为key的hashnode
+hashNode* dictFind(dict *d, const void *key);
+
 //尝试创建一个新的结点,它的键是key,如果已经有这个key,返回NULL
-hashNode *dictAddRaw(dict *d, void *key);
+hashNode *dictAddKey(dict *d, void *key);
 
 //尝试将给定的(key,val)插入到字典中,当且仅当key不在字典时才可以成功
-int dictAdd(dict *d, void *key, void *val);
+int dictAddPair(dict *d, void *key, void *val);
+
+//尝试创建一个新的结点,它的键是key,如果已经有这个key就返回那个node,否则会新加一个结点
+hashNode* dictReplaceKey(dict *d, void *key);
+
+//将给定的键值对插入到字典中,如果已经存在那么替换
+int dictReplacePair(dict *d, void *key, void *val);
+
+//删除键为key的结点,并且调用释放函数来释放key
+int dictDelete(dict *d, const void *key);
+
+//删除键为key的结点,不调用释放函数来释放key
+int dictDeleteNoFree(dict *d, const void *key);
 #endif //REDIS_BASIC_DICT_H
