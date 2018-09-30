@@ -17,31 +17,6 @@ static void dictEnableResize() { gDictCanResize = 1;}
 
 static void dictDisableResize() { gDictCanResize = 0;}
 
-
-//
-
-//初始化哈希表的各项属性
-static void hashTableInit(hashTable* ht)
-{
-    ht->table = NULL;
-    ht->size = 0;
-    ht->sizemask = 0;
-    ht->used = 0;
-}
-
-//计算第一个大于等于size的2的整数次幂的值,用作哈希表的值
-static unsigned long hashNextPowerOf2(unsigned long size)
-{
-    if(size >= LONG_MAX) return LONG_MAX;
-
-    unsigned long i = HASH_TABLE_INIT_SIZE;
-    while(1)
-    {
-        if(i >= size) return i;
-        i *= 2;
-    }
-}
-
 //根据需要初始化字典或者扩展字典
 static int dictExpandIfNeeded(dict* d)
 {
@@ -178,9 +153,9 @@ int dictRehash(dict *d, int n)
 //尝试创建一个新的结点,它的键是key,如果已经有这个key,返回NULL
 hashNode *dictAddRaw(dict *d, void *key)
 {
-    //??
     //正在rehash,那么新插入的结点应该在ht[1]中??
     //if(DICT_IS_REHASH(d)) dictRehash(d, 1);
+
     //索引是-1表示键已经存在
     int index = dictKeyIndex(d, key);
     if(index == -1) return NULL;
