@@ -10,7 +10,10 @@
 
 #define DICT_PROCESS_OK    ( 0)
 #define DICT_PROCESS_ERROR (-1)
-#define DICT_ITERATOR_IS_SAFE (1)
+
+//字典私有数据不使用时编译错误
+#define DICT_PRIVDATA_NOTUSED(V) ((void) V)
+
 
 //字典的实现,使用两个哈希表
 typedef struct dict
@@ -46,10 +49,10 @@ typedef struct dictIterator
     int safe;
 
     //当前迭代到的结点
-    hashNode* entry;
+    hashNode* curr;
 
     //当前迭代到的结点的下一个结点,因为在safe模式下可能会update结点,使用该指针防止结点丢失
-    hashNode* nextEntry;
+    hashNode* next;
 
     //unsafe模式下的认证?
     long long fingerprint;
@@ -66,7 +69,6 @@ typedef struct dictIterator
 
 // 返回字典的已有节点数量
 #define DICT_NODE_COUNT(d) ((d)->ht[0].used+(d)->ht[1].used)
-
 
 //释放给定字典节点的值
 #define DICT_FREE_HASH_NODE_VAL(d, node) do {\
@@ -108,6 +110,12 @@ dict* dictCreate(hashMethod* method, void* privdata);
 //释放字典
 void dictRelease(dict *d);
 
+//清空字典中哈希表所有的结点
+void dictClear(dict* d);
+
+//计算安全指纹
+long long dictFingerprint(dict *d);
+
 //扩展或者创建一个dict
 //(1)如果字典的ht[0]是空的,新的哈希表就是0号
 //(2)如果字典的ht[1]非空,新的哈希表设置为1号,并且置rehash标志,字典可进行rehash
@@ -138,4 +146,20 @@ int dictDelete(dict *d, const void *key);
 
 //删除键为key的结点,不调用释放函数来释放key
 int dictDeleteNoFree(dict *d, const void *key);
+
+//如果结点值不为空返回结点的值
+void* dictFetchValue(dict *d, const void *key);
+
+//获取字典的不安全迭代器
+dictIterator *dictGetIterator(dict *d);
+
+//获取字典的安全迭代器
+dictIterator *dictGetSafeIterator(dict *d);
+
+//获取迭代器指向的字典的下一个哈希结点
+hashNode* dictNext(dictIterator *iter);
+
+//释放迭代器
+void dictReleaseIterator(dictIterator *iter);
+
 #endif //REDIS_BASIC_DICT_H

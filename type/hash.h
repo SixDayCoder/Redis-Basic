@@ -10,6 +10,15 @@
 #define HASH_TABLE_INIT_SIZE (4)
 
 
+//哈希计算算法:by Austin Appleby
+unsigned int MurmurHash2(const void *key, int len);
+
+//哈希计算算法:time33 DJBX33A，Bernstein's hash
+unsigned int Time33Hash(const unsigned char* buf, int len);
+
+//哈希计算算法:Thomas Wang's 32 bit Mix Function
+unsigned int dictIntHashFunction(unsigned int key);
+
 //哈希表的结点,键值对
 typedef struct hashNode
 {
@@ -67,7 +76,7 @@ typedef struct hashMethod
     void (*keyDestructor)(void* privdata, void* key);
 
     //销毁值的函数
-    void (*valDestructor)(void* privadata, void* obj);
+    void (*valDestructor)(void* privdata, void* obj);
 
 }hashMethod;
 
@@ -95,5 +104,6 @@ void hashTableInit(hashTable* ht);
 
 //计算第一个大于等于size的2的整数次幂的值,用作哈希表的值
 unsigned long hashNextPowerOf2(unsigned long size);
+
 
 #endif //REDIS_BASIC_HASH_H

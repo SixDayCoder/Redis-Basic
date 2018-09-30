@@ -3,6 +3,7 @@
 //
 
 #include "dict.h"
+#include "hash.h"
 #include <limits.h>
 #include <assert.h>
 
@@ -191,6 +192,23 @@ void dictRelease(dict *d)
     zfree(d);
 }
 
+//清空字典中哈希表所有的结点
+void dictClear(dict* d)
+{
+    if(!d) return;;
+    dictReleaseHelper(d, &d->ht[0]);
+    dictReleaseHelper(d, &d->ht[1]);
+    d->rehashindex = -1;
+    d->iterators = 0;
+}
+
+//计算安全指纹
+long long dictFingerprint(dict *d)
+{
+    //TODO:
+    return 0;
+}
+
 //扩展或者创建一个dict
 //(1)如果字典的ht[0]是空的,新的哈希表就是0号
 //(2)如果字典的ht[1]非空,新的哈希表设置为1号,并且置rehash标志,字典可进行rehash
@@ -274,7 +292,6 @@ hashNode* dictFind(dict *d, const void *key)
 {
     //如果哈希表为空,返回NULL
     if(DICT_IS_EMPTY(d)) return NULL;
-
     //如果正在rehash,做一次渐进式rehash
     if(DICT_IS_REHASH(d)) dictRehash(d, 1);
 
@@ -303,7 +320,6 @@ hashNode *dictAddKey(dict *d, void *key)
 {
     //如果正在rehash,做一次渐进式rehash
     if(DICT_IS_REHASH(d)) dictRehash(d, 1);
-
     //索引是-1表示键已经存在
     int index = dictKeyIndex(d, key);
     if(index == -1) return NULL;
@@ -336,7 +352,6 @@ int dictReplacePair(dict *d, void *key, void *val)
 {
     //如果键值对不存在那么直接就可以插入成功
     if(dictAddPair(d, key, val) == DICT_PROCESS_OK) return DICT_PROCESS_OK;
-
     //否则说明已经存在该键值对,找出该节点
     hashNode* node = dictFind(d, key);
     //保存原有node的值
@@ -364,4 +379,105 @@ int dictDelete(dict *d, const void *key)
 int dictDeleteNoFree(dict *d, const void *key)
 {
     return dictDeleteHelper(d, key, 0);
+}
+
+//如果结点值不为空返回结点的值
+void* dictFetchValue(dict *d, const void *key)
+{
+    hashNode* node = dictFind(d, key);
+    if(!node) return NULL;
+    return HASH_NODE_GET_VAL(node);
+}
+
+//获取字典的不安全迭代器
+dictIterator *dictGetIterator(dict *d)
+{
+    dictIterator *iter = zmalloc(sizeof(*iter));
+
+    iter->d = d;
+    iter->tableid = 0;
+    iter->index = -1;
+    iter->safe = 0;
+    iter->next = NULL;
+    iter->curr = NULL;
+
+    return iter;
+}
+
+//获取字典的安全迭代器
+dictIterator *dictGetSafeIterator(dict *d)
+{
+    dictIterator *iter = dictGetIterator(d);
+    if(!iter) return NULL;
+
+    iter->safe = 1;
+    return iter;
+}
+
+//获取迭代器指向的字典的下一个哈希结点
+hashNode* dictNext(dictIterator *iter)
+{
+    while(1)
+    {
+        //curr为空有两种情况:(1)初次迭代(2)当前index所在的hashTable的链表已经被迭代完
+        if(iter->curr == NULL)
+        {
+            hashTable* ht = &iter->d->ht[iter->tableid];
+            //(1)初次迭代时执行
+            if(iter->index == -1 && iter->tableid == 0)
+            {
+                if(iter->safe) iter->d->iterators++;
+                else
+                {
+                    iter->fingerprint = dictFingerprint(iter->d);
+                }
+            }
+            iter->index++;
+            //(2)如果迭代器索引大于哈希表的大小说明这个哈希表已经被迭代完毕
+            if(iter->index >= (int)ht->size)
+            {
+                //如果正在rehash,记得还要迭代一下1号哈希表
+                if(DICT_IS_REHASH(iter->d) && iter->tableid == 0)
+                {
+                    iter->tableid = 1;
+                    iter->index = 0;
+                    ht = &iter->d->ht[1];
+                }
+                //否则已经迭代完,返回NULL
+                else
+                {
+                    return NULL;
+                }
+            }
+            //哈希表的下一个索引的头结点
+            iter->curr = ht->table[iter->index];
+        }
+        else
+        {
+            //curr不是空说明现在正在迭代当中,获取下一个指针
+            iter->curr = iter->next;
+        }
+
+        //返回之前记录迭代器的下一个hashNode
+        if(iter->curr)
+        {
+            iter->next = iter->curr->next;
+            return iter->curr;
+        }
+    }
+}
+
+//释放迭代器
+void dictReleaseIterator(dictIterator *iter)
+{
+    if(!iter) return;
+    //如果正在使用的迭代器,要进行一下校验
+    if(iter->tableid != 0 || iter->index != -1)
+    {
+        if(iter->safe)
+            iter->d->iterators--;
+        else
+            assert(iter->fingerprint == dictFingerprint(iter->d));
+    }
+    zfree(iter);
 }
