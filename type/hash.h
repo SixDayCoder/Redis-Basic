@@ -17,7 +17,7 @@ unsigned int MurmurHash2(const void *key, int len);
 unsigned int Time33Hash(const unsigned char* buf, int len);
 
 //哈希计算算法:Thomas Wang's 32 bit Mix Function
-unsigned int dictIntHashFunction(unsigned int key);
+unsigned int IntHash(unsigned int key);
 
 //哈希表的结点,键值对
 typedef struct hashNode

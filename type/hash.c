@@ -60,7 +60,7 @@ unsigned int Time33Hash(const unsigned char* buf, int len)
     return hash;
 }
 
-unsigned int dictIntHashFunction(unsigned int key)
+unsigned int IntHash(unsigned int key)
 {
     key += ~(key << 15);
     key ^=  (key >> 10);
