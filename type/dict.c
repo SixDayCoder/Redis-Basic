@@ -166,6 +166,7 @@ static void dictReleaseHelper(dict* d, hashTable* ht)
             next = node->next;
             DICT_FREE_HASH_NODE_KEY(d, node);
             DICT_FREE_HASH_NODE_VAL(d, node);
+            zfree(node);
             ht->used--;
             node = next;
         }
@@ -264,7 +265,7 @@ int dictRehash(dict *d, int n)
         //否则进行迁移
         assert(d->ht[0].size > (unsigned)d->rehashindex);
         //找到哈希表中第一非空索引
-        while(d->ht[0].table[d->rehashindex] != NULL) d->rehashindex++;
+        while(d->ht[0].table[d->rehashindex] == NULL) d->rehashindex++;
         //非空索引的链表头结点
         curr = d->ht[0].table[d->rehashindex];
         while(curr)
