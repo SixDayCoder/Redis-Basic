@@ -4,6 +4,8 @@
 #include "list.h"
 #include "hash.h"
 #include "dict.h"
+#include "skiplist.h"
+#include "utlis.h"
 
 unsigned int TestHashFunction (const void* key)
 {
@@ -34,7 +36,7 @@ void TestSDSValDtor(void* privdata, void* obj)
     sdsfree(s);
 }
 
-int main()
+void TestHash()
 {
     hashMethod method = {
             TestHashFunction,
@@ -61,5 +63,9 @@ int main()
         printf("k is : %s, v is : %s\n", k, v);
     }
     dictRelease(d);
+}
+
+int main()
+{
     return 0;
 }

@@ -4,4 +4,17 @@ SET(CMAKE_C_STANDARD 99)
 INCLUDE_DIRECTORIES(main)
 INCLUDE_DIRECTORIES(memory)
 INCLUDE_DIRECTORIES(type)
-ADD_EXECUTABLE(redis_basic main/main.c memory/memory.h type/sds.h type/sds.c memory/memory.c type/list.h type/list.c type/dict.h type/dict.c type/hash.h type/hash.c)
+INCLUDE_DIRECTORIES(object)
+INCLUDE_DIRECTORIES(utlis)
+ADD_EXECUTABLE(
+        redis_basic
+        main/main.c
+        memory/memory.h memory/memory.c
+        type/sds.h  type/sds.c
+        type/list.h type/list.c
+        type/dict.h type/dict.c
+        type/hash.h type/hash.c
+        type/skiplist.h type/skiplist.c
+        object/object.h object/object.c
+        utlis/utlis.h utlis/utlis.c
+)
