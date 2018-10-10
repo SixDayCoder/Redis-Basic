@@ -126,7 +126,6 @@ skiplistNode* slInsert(skiplist *sl, double score, object* obj)
     unsigned int rank[SKIPLIST_MAXLEVEL] = { 0 };
 
     skiplistNode* curr = sl->head;
-    skiplistNode* now = NULL;
     //从最高层往下寻找
     for(int i = sl->maxlevel - 1; i >= 0; i--)
     {
@@ -170,7 +169,7 @@ skiplistNode* slInsert(skiplist *sl, double score, object* obj)
         node->level[i].forward = update[i]->level[i].forward;
         node->level[i].span = update[i]->level[i].span - (rank[0] - rank[1]);
         update[i]->level[i].forward = node;
-        update[i]->level[i].span = (rank[0] - rank[1]) + 1;
+        update[i]->level[i].span = (rank[0] - rank[i]) + 1;
     }
     //设置新节点的back指针
     node->backward = (update[0] == sl->head) ? NULL : update[0];
@@ -210,14 +209,8 @@ void slDeleteNode(skiplist* sl, struct skiplistNode* node, struct skiplistNode**
         sl->tail = node->backward;
     }
     //更新跳表的最大层数,只有删除的节点在跳表的最高层的时候才会执行
-    if(sl->maxlevel > 1)
-    {
-        skiplistNode* top = sl->head->level[sl->maxlevel - 1].forward;
-        if(top == NULL)
-        {
-            sl->maxlevel--;
-        }
-    }
+    while(sl->maxlevel > 1 && sl->head->level[sl->maxlevel - 1].forward == NULL)
+        sl->maxlevel--;
     //跳表节点数目-1
     sl->length--;
 }
@@ -228,7 +221,6 @@ int slDelete(skiplist *sl, double score, object* obj)
     //待更新的节点,update[i]表示第(i+1)层第一个分值>=score的节点,或者是空
     skiplistNode* update[SKIPLIST_MAXLEVEL] = { NULL };
     skiplistNode* curr = sl->head;
-    skiplistNode* tmp = NULL;
     for(int i = sl->maxlevel - 1; i >= 0; i--)
     {
         while(curr->level[i].forward &&
@@ -241,9 +233,11 @@ int slDelete(skiplist *sl, double score, object* obj)
     }
     //curr是score>=传入的score的值
     curr = curr->level[0].forward;
-    if(curr && score == curr->score)
+    if(curr && score == curr->score && equalStringObject(curr->obj, obj))
     {
         slDeleteNode(sl, curr, update);
+        slReleaseNode(curr);
+        return 1;
     }
     //失败
     return 0;
@@ -257,7 +251,7 @@ unsigned long slDeleteRangeByScore(skiplist* sl, skiplistRange* range)
     for(int i  = sl->maxlevel; i >= 0; i--)
     {
         while(curr->level[i].forward &&
-             (range->minInclude ? curr->level[i].forward->score <= range->minScore : curr->level[i].forward->score < range->minScore))
+             (range->minInclude ? curr->level[i].forward->score < range->minScore : curr->level[i].forward->score <= range->minScore))
         {
             curr = curr->level[i].forward;
         }
