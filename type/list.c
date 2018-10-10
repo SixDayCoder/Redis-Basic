@@ -10,8 +10,6 @@ list* listCreate(void)
     list *ls;
 
     ls = zmalloc(sizeof(*ls));
-    if(!ls) return NULL;
-
     ls->head = ls->tail = NULL;
     ls->len = 0;
     ls->dup = NULL;
@@ -29,7 +27,6 @@ void listRealease(list *ls)
     listNode *curr = LIST_HEAD(ls);
     listNode *next = NULL;
     size_t len = LIST_LENGTH(ls);
-
     while(len--)
     {
         next = curr->next;
@@ -53,9 +50,7 @@ list* listPushHead(list *ls, void* value)
     if(!ls || !value) return ls;
 
     listNode *node = zmalloc(sizeof(*node));
-    if(!node) return NULL;
     node->value = value;
-
     if(ls->len == 0)
     {
         ls->head = ls->tail = node;
@@ -80,9 +75,7 @@ list* listPushTail(list *ls, void* value)
     if(!ls || !value) return ls;
 
     listNode *node = zmalloc(sizeof(*node));
-    if(!node) return NULL;
     node->value = value;
-
     if(ls->len == 0)
     {
         ls->head = ls->tail = node;
@@ -95,7 +88,6 @@ list* listPushTail(list *ls, void* value)
         ls->tail->next = node;
         ls->tail = node;
     }
-
     ls->len++;
     return ls;
 }
@@ -106,9 +98,7 @@ list* listInsertNode(list *ls, listNode *oldnode, void *value, int after)
     if(!ls || !value || !oldnode) return ls;
 
     listNode *node = zmalloc(sizeof(*node));
-    if(!node) return NULL;
     node->value = value;
-
     //插入到oldNode的后面
     if(after)
     {
@@ -131,7 +121,6 @@ list* listInsertNode(list *ls, listNode *oldnode, void *value, int after)
             ls->tail = node;
         }
     }
-
     if(node->prev != NULL)
     {
         node->prev->next = node;
@@ -141,7 +130,6 @@ list* listInsertNode(list *ls, listNode *oldnode, void *value, int after)
     {
         node->next->prev = node;
     }
-
     ls->len++;
     return ls;
 }
@@ -150,16 +138,13 @@ list* listInsertNode(list *ls, listNode *oldnode, void *value, int after)
 list* listDup(list *orig)
 {
     if(!orig) return NULL;
-
     list* copy = listCreate();
-    if(!copy) return NULL;
     copy->dup = orig->dup;
     copy->free = orig->free;
     copy->match = orig->match;
 
     listIter* iter;
     listNode* node;
-
     iter = listGetIterator(orig, LIST_ITER_DIRECTION_FORWARD);
     while( (node = listNext(iter)) != NULL)
     {
@@ -186,7 +171,6 @@ list* listDup(list *orig)
             return  NULL;
         }
     }
-
     listReleaseIterator(iter);
     return copy;
 }
@@ -195,7 +179,6 @@ list* listDup(list *orig)
 void listDelNode(list *ls, listNode *node)
 {
     if(!ls) return;
-
     //前置结点调整
     if(node->prev)
     {
@@ -205,7 +188,6 @@ void listDelNode(list *ls, listNode *node)
     {
         ls->head = node->next;
     }
-
     //后序结点调整
     if(node->next)
     {
@@ -215,7 +197,6 @@ void listDelNode(list *ls, listNode *node)
     {
         ls->tail = node->prev;
     }
-
     //若free函数存在,调用free函数清除结点的值
     if(ls->free) ls->free(node->value);
 
@@ -230,10 +211,7 @@ void listDelNode(list *ls, listNode *node)
 listIter* listGetIterator(list *ls, int direction)
 {
     if(!ls) return NULL;
-
     listIter *iter = zmalloc(sizeof(*iter));
-    if(!iter) return NULL;
-
     //根据迭代方向设置迭代器的起始节点
     if(direction == LIST_ITER_DIRECTION_BACKWARD)
     {
@@ -258,7 +236,6 @@ void listReleaseIterator(listIter *iter)
 listNode* listNext(listIter *iter)
 {
     if(!iter) return NULL;
-
     listNode *curr = iter->next;
     if(curr != NULL)
     {
@@ -298,7 +275,6 @@ listNode *listSearchKey(list *ls, void *key)
 
     listIter* iter;
     listNode* node;
-
     iter = listGetIterator(ls, LIST_ITER_DIRECTION_FORWARD);
     while((node = listNext(iter)) != NULL)
     {
@@ -320,7 +296,6 @@ listNode *listSearchKey(list *ls, void *key)
             }
         }
     }
-
     //未找到
     listReleaseIterator(iter);
     return NULL;
@@ -330,7 +305,6 @@ listNode *listSearchKey(list *ls, void *key)
 listNode* listIndex(list *ls, long index)
 {
     if(!ls) return NULL;
-
     listNode* node;
     //从表尾寻找
     if(index < 0)
@@ -353,12 +327,10 @@ void listRotate(list *ls)
 {
     if(!ls) return;
     if(ls->len <= 1) return;
-
     //取出表尾结点
     listNode *node = ls->tail;
     ls->tail = ls->tail->prev;
     ls->tail->next = NULL;
-
     //插入到表头
     node->prev = NULL;
     ls->head->prev = node;

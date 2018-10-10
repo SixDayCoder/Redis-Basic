@@ -16,8 +16,6 @@ int slRandomLevel(void)
 skiplistNode* slCreateNode(int level, double score, object* obj)
 {
     skiplistNode* node = zmalloc(sizeof(*node) + level * sizeof(skiplistNodeLevel));
-    if(!node) return NULL;
-
     node->obj = obj;
     node->score = score;
     return node;
@@ -34,12 +32,9 @@ void slReleaseNode(skiplistNode* node)
 skiplist* slCreate()
 {
     skiplist* sl = zmalloc(sizeof(*sl));
-    if(!sl) return NULL;
-
     //默认最大的层级是1,最底层
     sl->maxlevel = 1;
     sl->length = 0;
-
     //初始化表头节点
     sl->head = slCreateNode(SKIPLIST_MAXLEVEL, 0, NULL);
     sl->head->backward = NULL;
@@ -48,7 +43,6 @@ skiplist* slCreate()
         sl->head->level[i].forward = NULL;
         sl->head->level[i].span = 0;
     }
-
     //初始化表尾节点
     sl->tail = NULL;
     return sl;
@@ -59,15 +53,12 @@ void slRelease(skiplist* sl)
 {
     skiplistNode* curr = sl->head->level[0].forward;
     skiplistNode* next = NULL;
-
     while(curr)
     {
         next = curr->level[0].forward;
         slReleaseNode(curr);
         curr = next;
     }
-
-    //释放跳表
     zfree(sl);
 }
 
@@ -80,12 +71,9 @@ int slIsInRange(skiplist* sl, skiplistRange* range)
     {
         return 0;
     }
-
-    skiplistNode* node;
     //检查最大分值
-    node = sl->tail;
+    skiplistNode* node = sl->tail;
     if(node == NULL || !SL_VAL_GT_RANGE_MIN(node->score, range) ) return 0;
-
     //检查最小分值
     node = sl->head->level[0].forward;
     if(node == NULL || !SL_VAL_LT_RANGE_MAX(node->score, range) ) return 0;
@@ -97,14 +85,13 @@ skiplistNode *slFirstInRange(skiplist *sl, skiplistRange *range)
 {
     //首先检查是否在范围内
     if(slIsInRange(sl, range)) return NULL;
-
     skiplistNode* curr = sl->head;
     for(int i = sl->maxlevel - 1; i >=0 ; i--)
     {
+        //score <= range.min时迭代下一个节点
         while (curr->level[i].forward && !SL_VAL_GT_RANGE_MIN(curr->level[i].forward->score, range))
             curr = curr->level[i].forward;
     }
-    //TODO:explain there
     curr = curr->level[0].forward;
     if(!curr) return NULL;
     //检查score <= max
@@ -115,12 +102,12 @@ skiplistNode *slFirstInRange(skiplist *sl, skiplistRange *range)
 //跳表中最后一个分值符合 range 中指定范围的节点。
 skiplistNode *slLastInRange(skiplist *sl, skiplistRange *range)
 {
-//首先检查是否在范围内
+    //首先检查是否在范围内
     if(slIsInRange(sl, range)) return NULL;
-
     skiplistNode* curr = sl->head;
     for(int i = sl->maxlevel - 1; i >=0 ; i--)
     {
+        //score <= range.max时迭代下一个节点
         while (curr->level[i].forward && !SL_VAL_LT_RANGE_MAX(curr->level[i].forward->score, range))
             curr = curr->level[i].forward;
     }
@@ -133,11 +120,11 @@ skiplistNode *slLastInRange(skiplist *sl, skiplistRange *range)
 //跳表sl插入新的节点
 skiplistNode* slInsert(skiplist *sl, double score, object* obj)
 {
-    if(!sl) return NULL;
-    //待更新的节点,update[i]表示第(i+1)层第一个分值>=score的节点,或者是空
+    //待更新的节点,update[i]表示第(i+1)层第一个分值>=score的节点
     skiplistNode* update[SKIPLIST_MAXLEVEL] = { NULL };
     //排位
     unsigned int rank[SKIPLIST_MAXLEVEL] = { 0 };
+
     skiplistNode* curr = sl->head;
     skiplistNode* now = NULL;
     //从最高层往下寻找
@@ -146,19 +133,14 @@ skiplistNode* slInsert(skiplist *sl, double score, object* obj)
         //如果i不是最高层,那么rank的初始值是它上一层的rank值
         //各个层的rank一层层累积
         rank[i] = ( i == (sl->maxlevel-1) ? 0 : rank[i + 1] );
-        //找到:
-        //(1)第一个score比要插入的score大(等于)的节点,这个节点肯定是要更新的节点
-        while(curr->level[i].forward)
+        while(curr->level[i].forward &&
+              ( curr->level[i].forward->score < score ||
+              ( curr->level[i].forward->score == score && compareStringObject(curr->level[i].forward->obj, obj) < 0)))
         {
-            now = curr->level[i].forward;
-            if(now->score < score || (now->score == score && compareStringObject(now->obj, obj)))
-            {
-                //记录沿途跨越了多少个节点
-                rank[i] += curr->level[i].span;
-                //移动到下一个节点
-                curr = curr->level[i].forward;
-            }
-            else break;
+            //记录沿途跨越了多少个节点
+            rank[i] += curr->level[i].span;
+            //移动到下一个节点
+            curr = curr->level[i].forward;
         }
         update[i] = curr;
     }
@@ -186,8 +168,8 @@ skiplistNode* slInsert(skiplist *sl, double score, object* obj)
     for(int i = 0 ; i < level; ++i)
     {
         node->level[i].forward = update[i]->level[i].forward;
-        update[i]->level[i].forward = node;
         node->level[i].span = update[i]->level[i].span - (rank[0] - rank[1]);
+        update[i]->level[i].forward = node;
         update[i]->level[i].span = (rank[0] - rank[1]) + 1;
     }
     //设置新节点的back指针
@@ -210,7 +192,6 @@ void slDeleteNode(skiplist* sl, struct skiplistNode* node, struct skiplistNode**
 {
     for(int i = 0 ; i < sl->maxlevel; i++)
     {
-        //TODO:explain there
         if(update[i]->level[i].forward == node)
         {
             //udpate[i]的跨度  = update[i]的原跨度 + 要删除的节点node的跨度 - 1(node本身占一个跨度)
@@ -250,15 +231,11 @@ int slDelete(skiplist *sl, double score, object* obj)
     skiplistNode* tmp = NULL;
     for(int i = sl->maxlevel - 1; i >= 0; i--)
     {
-        //TODO:explain here
-        while(curr->level[i].forward)
+        while(curr->level[i].forward &&
+             ( curr->level[i].forward->score < score ||
+             ( curr->level[i].forward->score == score && compareStringObject(curr->level[i].forward->obj, obj) < 0)))
         {
-            tmp = curr->level[i].forward;
-            if(tmp->score < score || (tmp->score == score && compareStringObject(tmp->obj, obj)))
-            {
-                curr = curr->level[i].forward;
-            }
-            else break;
+            curr = curr->level[i].forward;
         }
         update[i] = curr;
     }
@@ -272,6 +249,67 @@ int slDelete(skiplist *sl, double score, object* obj)
     return 0;
 }
 
+//删除所有在分值范围内的元素
+unsigned long slDeleteRangeByScore(skiplist* sl, skiplistRange* range)
+{
+    skiplistNode* update[SKIPLIST_MAXLEVEL] = { NULL };
+    skiplistNode* curr = sl->head;
+    for(int i  = sl->maxlevel; i >= 0; i--)
+    {
+        while(curr->level[i].forward &&
+             (range->minInclude ? curr->level[i].forward->score <= range->minScore : curr->level[i].forward->score < range->minScore))
+        {
+            curr = curr->level[i].forward;
+        }
+        //记录待删除的结点
+        update[i] = curr;
+    }
+    unsigned long removed = 0;
+    skiplistNode* next = NULL;
+    curr = curr->level[0].forward;
+    while(curr && (range->maxInclude ? curr->score <= range->maxScore : curr->score < range->maxScore))
+    {
+        next = curr->level[0].forward;
+        slDeleteNode(sl, curr, update);
+        slReleaseNode(curr);
+        curr = next;
+        removed++;
+    }
+    return removed;
+}
+
+//删除所有在排位范围内的元素
+unsigned long slDeleteRangeByRank(skiplist* sl, unsigned int start, unsigned int end)
+{
+    skiplistNode* update[SKIPLIST_MAXLEVEL] = { NULL };
+    skiplistNode* curr = sl->head;
+    unsigned long span = 0;
+    unsigned long removed = 0;
+
+    for(int i  = sl->maxlevel; i >= 0; i--)
+    {
+        while(curr->level[i].forward && (span + curr->level[i].span < start))
+        {
+            span += curr->level[i].span;
+            curr = curr->level[i].forward;
+        }
+        update[i] = curr;
+    }
+
+    curr = curr->level[0].forward;
+    span++;
+    while(curr && span <= end)
+    {
+        skiplistNode* next = curr->level[0].forward;
+        slDeleteNode(sl, curr, update);
+        slReleaseNode(curr);
+        curr = next;
+        removed++;
+        span++;
+    }
+    return removed;
+}
+
 //查询给定分值和对象的结点在跳表中的排位置
 //由于head节点也被计算在内,所以rank以1位起始
 unsigned long slGetRank(skiplist* sl, double score, object* obj)
@@ -280,17 +318,12 @@ unsigned long slGetRank(skiplist* sl, double score, object* obj)
     unsigned long rank = 0;
     for(int i = sl->maxlevel - 1; i >= 0; i--)
     {
-        while(curr->level[i].forward)
+        while(curr->level[i].forward && (curr->level[i].forward->score < score))
         {
-            if(curr->level[i].forward->score < score)
-            {
-                //累积跨越的结点数目
-                rank += curr->level[i].span;
-                curr = curr->level[i].forward;
-            }
+            //累积跨越的结点数目
+            rank += curr->level[i].span;
+            curr = curr->level[i].forward;
         }
-        //查找到某个结点后,对比分值和对象是否相同
-        if(!curr) continue;
         if(curr->obj && equalStringObject(curr->obj, obj)) return rank;
     }
     //没找到
@@ -309,9 +342,7 @@ skiplistNode* slGetNodeByRank(skiplist* sl, unsigned long rank)
             span += curr->level[i].span;
             curr = curr->level[i].forward;
         }
-
         if(span == rank) return curr;
     }
-    //没找到
     return NULL;
 }

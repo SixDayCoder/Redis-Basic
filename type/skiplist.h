@@ -6,7 +6,7 @@
 #define REDIS_BASIC_SKIPLIST_H
 
 #include "memory.h"
-#include "../object/object.h"
+#include "object.h"
 
 struct skiplistNode;
 
@@ -40,8 +40,8 @@ typedef struct skiplistNode
 } skiplistNode ;
 
 
-#define SKIPLIST_MAXLEVEL 32   //跳表最大层数
-#define SKIPLIST_P 0.25        //跳表节点提升层数的概率
+#define SKIPLIST_MAXLEVEL (32)   //跳表最大层数
+#define SKIPLIST_P (0.25)        //跳表节点提升层数的概率
 //跳表
 typedef struct skiplist
 {
@@ -98,10 +98,16 @@ skiplistNode *slLastInRange(skiplist *sl, skiplistRange *range);
 skiplistNode* slInsert(skiplist *sl, double score, object* obj);
 
 //删除函数,被delete, deleteRangeByScore, deleteByRank调用
-void slDeleteNode(skiplist* sl, struct skiplistNode* node, struct skiplistNode** update);
+void slDeleteNode(skiplist* sl, skiplistNode* node, skiplistNode** update);
 
 //跳表sl删除值为obj的节点(score还得相同)
 int slDelete(skiplist *sl, double score, object* obj);
+
+//删除所有在分值范围内的元素
+unsigned long slDeleteRangeByScore(skiplist* sl, skiplistRange* range);
+
+//删除所有在排位范围内的元素
+unsigned long slDeleteRangeByRank(skiplist* sl, unsigned int start, unsigned int end);
 
 //查询给定分值和对象的结点在跳表中的排位置
 //由于head节点也被计算在内,所以rank以1位起始

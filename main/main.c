@@ -65,6 +65,35 @@ void TestHash()
     dictRelease(d);
 }
 
+void TestSkipList()
+{
+    object* o1 = createObject(OBJECT_TYPE_STRING, sdsnew("123"));
+    object* o2 = createObject(OBJECT_TYPE_STRING, sdsnew("456"));
+    object* o3 = createObject(OBJECT_TYPE_STRING, sdsnew("789"));
+    object* o4 = createObject(OBJECT_TYPE_STRING, sdsnew("111"));
+
+    skiplist* sl = slCreate();
+    slInsert(sl, 1.0, o1);
+    slInsert(sl, 3.0, o2);
+    slInsert(sl, 2.0, o3);
+    slInsert(sl, 0.0, o4);
+
+    printf("len : %lu\n", sl->length);
+    printf("rank o1 : %lu, rank o2 : %lu, rank o3 : %lu, rank o4 : %lu\n", slGetRank(sl, 1.0, o1), slGetRank(sl, 3.0, o2), slGetRank(sl, 2.0, o3), slGetRank(sl, 0.0, o4));
+
+
+    slDelete(sl, 3.0, o2);
+    printf("len : %lu\n", sl->length);
+
+    skiplistRange range;
+    range.minScore = 0.0;
+    range.maxScore = 10.0;
+    range.minInclude = 1;
+    range.maxInclude = 1;
+    slDeleteRangeByScore(sl, &range);
+    printf("len : %lu\n", sl->length);
+}
+
 int main()
 {
     return 0;
