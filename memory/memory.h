@@ -16,6 +16,7 @@
 static void zmalloc_oom_handler_default(size_t size)
 {
     //%zu is for size_t
+    printf("zmalloc : out pf memory trying to allocate %zu bytes\n", size);
     fprintf(stderr, "zmalloc : out pf memory trying to allocate %zu bytes\n", size);
     fflush(stderr);
     abort();

@@ -15,6 +15,6 @@ ADD_EXECUTABLE(
         type/dict.h type/dict.c
         type/hash.h type/hash.c
         type/skiplist.h type/skiplist.c
+        type/intset.h type/intset.c
         object/object.h object/object.c
-        utlis/utlis.h utlis/utlis.c
-)
+        utlis/utlis.h utlis/utlis.c)
