@@ -6,6 +6,7 @@
 #include "dict.h"
 #include "skiplist.h"
 #include "intset.h"
+#include "ziplist.h"
 #include "utlis.h"
 
 unsigned int TestHashFunction (const void* key)
