@@ -128,7 +128,21 @@ void TestIntSet()
     }
 }
 
+void TestZiplist()
+{
+    unsigned char* zl = ziplistNew();
+
+    ziplistPushBack(zl, (unsigned char*)"hello", 5);
+
+    ziplistPushBack(zl, (unsigned char*)"1234", 4);
+
+    ziplistPushHead(zl, (unsigned char*)"5", 1);
+
+    printf("total bytes is : %d, length is : %d\n", ZIPLIST_BYTES(zl), ziplistEntryCount(zl));
+}
+
 int main()
 {
+    TestZiplist();
     return 0;
 }

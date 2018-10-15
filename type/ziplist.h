@@ -21,7 +21,7 @@
 #define ZIP_ENCODING_INT_MASK (0x30)
 
 //判断给定编码是否是字符串编码
-#define ZIP_IS_STR_ENCODE(encode) ( ( (encode) & ZIP_ENCODING_STR_MASK) ) < ZIP_ENCODING_STR_MASK )
+#define ZIP_IS_STR_ENCODE(encode) (  ( (encode) & ZIP_ENCODING_STR_MASK ) < ZIP_ENCODING_STR_MASK )
 
 //字符串编码类型,0XB表示字符串的长度有几位, 06B表示字符串的长度用6个bits可以装下
 #define ZIP_STR_06B (0 << 6)
@@ -83,7 +83,6 @@ typedef struct zlentry
 
 } zlentry ;
 
-
 // 返回 ziplist 表头的大小, zlbytes(32) + zltail(32) + zllen(16)
 #define ZIPLIST_HEADER_SIZE  (sizeof(uint32_t) * 2 + sizeof(uint16_t))
 
@@ -96,16 +95,20 @@ typedef struct zlentry
 //获取ziplist的zltail属性
 #define ZIPLIST_TAIL(zl)  ((zl)+ZIPLIST_TAIL_OFFSET(zl))
 
-
 //获取ziplist的zllen属性
 #define ZIPLIST_LEN(zl)  (*((uint16_t*)((zl) + 2 * sizeof(uint32_t))))
+
+//增加ziplist的节点数目
+#define ZIPLIST_INCR_LENGTH(zl, incr) do {\
+    if(ZIPLIST_LEN(zl) < UINT16_MAX)\
+        ZIPLIST_LEN(zl) = ZIPLIST_LEN(zl) + incr;\
+}while(0);
 
 //返回ziplist的第一个entry的首地址
 #define ZIPLIST_HEAD_ENTRY_ADDR(zl) ( (zl) + ZIPLIST_HEADER_SIZE)
 
 //返回ziplist的最后一个entry的首地址
 #define ZIPLIST_END_ENTRY_ADDR(zl) ( (zl) + ZIPLIST_TAIL_OFFSET(zl) )
-
 
 //创建新的压缩列表
 unsigned char* ziplistNew();
@@ -115,5 +118,8 @@ unsigned char *ziplistPushHead(unsigned char *zl, unsigned char *s, unsigned int
 
 //将长度为slen的字符串s插入到压缩列表的表尾
 unsigned char *ziplistPushBack(unsigned char *zl, unsigned char *s, unsigned int slen);
+
+//获取压缩列表的结点个数
+unsigned int ziplistEntryCount(unsigned char* zl);
 
 #endif //REDIS_BASIC_ZIPLIST_H
