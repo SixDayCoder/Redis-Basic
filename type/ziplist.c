@@ -56,8 +56,11 @@ static uint32_t zlentryIntSize(unsigned char encoding)
         case ZIP_INT_16B: return 2;
         case ZIP_INT_32B: return 4;
         case ZIP_INT_64B: return 8;
-        default:          return 0;
     }
+    //4位整数,用encoding的后四位即可保存
+    if(encoding >= ZIP_INT_IMM_MIN && encoding <= ZIP_INT_IMM_MAX)
+        return 0;
+    return 0;
 }
 
 //ptr指向entry,解码encoding信息
@@ -259,7 +262,7 @@ static int ziplistTryEncode2Int(unsigned char* content, unsigned int len, long l
     {
         if(value >= 0 && value <= 12)
         {
-            //特殊的,四位整数,存储[0,12]
+            //特殊的,四位整数,存储[0,12],直接放到encoding的后四个bit
             //val = 0时,encoding =  11110001
             //val = 12时,encoding = 11111101
             *encoding = (unsigned char)ZIP_INT_IMM_MIN + (unsigned char)value;
