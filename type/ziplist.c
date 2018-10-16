@@ -419,6 +419,36 @@ static void ziplistSaveInt(unsigned char*p, int64_t value, unsigned char encodin
     else assert(NULL);
 }
 
+//以encoding指定的编码方式读取并返回pint指int值
+static int64_t ziplistLoadInt(unsigned char* pint, unsigned char encoding)
+{
+    int16_t i16;
+    int32_t i32;
+    int64_t i64, ret = 0;
+
+    if (encoding == ZIP_INT_08B) {
+        ret = ((int8_t*)pint)[0];
+    } else if (encoding == ZIP_INT_16B) {
+        memcpy(&i16, pint, sizeof(i16));
+        ret = i16;
+    } else if (encoding == ZIP_INT_32B) {
+        memcpy(&i32, pint, sizeof(i32));
+        ret = i32;
+    } else if (encoding == ZIP_INT_24B) {
+        i32 = 0;
+        memcpy(((uint8_t*)&i32) + 1, pint ,sizeof(i32) - sizeof(uint8_t));
+        ret = i32 >> 8;
+    } else if (encoding == ZIP_INT_64B) {
+        memcpy(&i64, pint, sizeof(i64));
+        ret = i64;
+    } else if (encoding >= ZIP_INT_IMM_MIN && encoding <= ZIP_INT_IMM_MAX) {
+        ret = (encoding & ZIP_INT_IMM_MASK) - 1;
+    } else {
+        assert(NULL);
+    }
+    return ret;
+}
+
 //创建新的压缩列表
 unsigned char* ziplistNew()
 {
@@ -456,7 +486,7 @@ static unsigned char *ziplistInsert(unsigned char *zl, unsigned char *p, unsigne
         //指向end_flag,两种情况
         //1)tail指向end_flag:空的ziplist
         //2)tail没有指向end_flag:说明新节点要插入到尾部,成为新的tail
-        unsigned char* ptail = ZIPLIST_TAIL(zl);
+        unsigned char* ptail = ZIPLIST_TAIL_ENTRY(zl);
         if(ptail[0] != ZIP_END_FALG)
         {
             //获取当前entry的字节数,新插入节点后就是新节点的prevlen
@@ -539,14 +569,14 @@ static unsigned char *ziplistInsert(unsigned char *zl, unsigned char *p, unsigne
 //将长度为slen的字符串s插入到压缩列表的表头
 unsigned char *ziplistPushHead(unsigned char *zl, unsigned char *s, unsigned int slen)
 {
-    unsigned char* pos = ZIPLIST_HEAD_ENTRY_ADDR(zl);
+    unsigned char* pos = ZIPLIST_HEAD_ENTRY(zl);
     return ziplistInsert(zl, pos, s, slen);
 }
 
 //将长度为slen的字符串s插入到压缩列表的表尾
 unsigned char *ziplistPushBack(unsigned char *zl, unsigned char *s, unsigned int slen)
 {
-    unsigned char* pos = ZIPLIST_END_ENTRY_ADDR(zl);
+    unsigned char* pos = ZIPLIST_TAIL_ENTRY(zl);
     return ziplistInsert(zl, pos, s, slen);
 }
 
@@ -567,4 +597,92 @@ unsigned int ziplistEntryCount(unsigned char* zl)
         cnt++;
     }
     return cnt;
+}
+
+//返回zl的索引为index的zlentry的指针
+unsigned char* ziplistIndex(unsigned char* zl, int index)
+{
+    //索引为正从head->tail
+    //索引为负从tail->head, 负索引从-1开始
+    unsigned char* item = NULL;
+    zlentry e;
+    if(index < 0)
+    {
+        index = (-index) - 1;
+        item = ZIPLIST_TAIL_ENTRY(zl);
+        if(item[0] != ZIP_END_FALG)
+        {
+            e = ziplistEntry(item);
+            //从tail->head,head结点的prelen是0
+            while(e.prevlen > 0 && index--)
+            {
+                item -= e.prevlen;
+                e = ziplistEntry(item);
+            }
+        }
+    }
+    else
+    {
+        item = ZIPLIST_HEAD_ENTRY(zl);
+        while(item[0] != ZIP_END_FALG && index--)
+            item += zlentrySize(item);
+    }
+
+    return (item[0] == ZIP_END_FALG || index > 0) ? NULL : item;
+}
+
+//p指向zl的某个entry,该函数返回该entry的下一个entry
+unsigned char *ziplistNext(unsigned char *zl, unsigned char *p)
+{
+    //p指向末尾标志返回NULL
+    if(p[0] == ZIP_END_FALG) return NULL;
+    p += zlentrySize(p);
+    //p的下一个节点指向末尾标志也返回NULL
+    if(p[0] == ZIP_END_FALG) return NULL;
+    return p;
+}
+
+//p指向zl的某个entry,该函数返回该entry的前一个entry
+unsigned char *ziplistPrev(unsigned char *zl, unsigned char *p)
+{
+    if(p[0] == ZIP_END_FALG)
+    {
+        //尝试取出尾结点
+        p = ZIPLIST_TAIL_ENTRY(zl);
+        return (p[0] == ZIP_END_FALG) ? NULL : p;
+    }
+    //指向head节点,不存在前置节点
+    else if(p == ZIPLIST_HEAD_ENTRY(zl))
+    {
+        return NULL;
+    }
+    zlentry e = ziplistEntry(p);
+    assert(e.prevlen > 0);
+    return p - e.prevlen;
+}
+
+//取出p指向的entry的值,字符串保存在sval中,整数值保存在lval中,get成功返回1,如果不是字符串sval是NULL
+unsigned int ziplistGet(unsigned char *p, unsigned char **sval, unsigned int *slen, long long *lval)
+{
+    if(p == NULL || p[0] == ZIP_END_FALG) return 0;
+    //初始化,默认是get整数值
+    if(sval) *sval = NULL;
+
+    zlentry e = ziplistEntry(p);
+    if(ZIP_IS_STR_ENCODE(e.encoding))
+    {
+        if(sval)
+        {
+            *slen = e.len;
+            *sval = p + e.headersize;
+        }
+    }
+    else
+    {
+        if(lval)
+        {
+            *lval = (long long) ziplistLoadInt(p + e.headersize, e.encoding);
+        }
+    }
+    return 1;
 }

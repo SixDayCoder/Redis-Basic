@@ -83,17 +83,20 @@ typedef struct zlentry
 
 } zlentry ;
 
-// 返回 ziplist 表头的大小, zlbytes(32) + zltail(32) + zllen(16)
-#define ZIPLIST_HEADER_SIZE  (sizeof(uint32_t) * 2 + sizeof(uint16_t))
-
 //获取ziplist的zlbytes属性
 #define ZIPLIST_BYTES(zl)  (*((uint32_t*)(zl)))
+
+// 返回 ziplist 表头的大小, zlbytes(32) + zltail(32) + zllen(16)
+#define ZIPLIST_HEADER_SIZE  (sizeof(uint32_t) * 2 + sizeof(uint16_t))
 
 //获取ziplist的zltail的偏移
 #define ZIPLIST_TAIL_OFFSET(zl)  (*((uint32_t*)((zl) + sizeof(uint32_t))))
 
-//获取ziplist的zltail属性
-#define ZIPLIST_TAIL(zl)  ((zl)+ZIPLIST_TAIL_OFFSET(zl))
+//获取ziplist的tail结点
+#define ZIPLIST_TAIL_ENTRY(zl)  ((zl)+ZIPLIST_TAIL_OFFSET(zl))
+
+//获取ziplist的head结点
+#define ZIPLIST_HEAD_ENTRY(zl)  ((zl)+ZIPLIST_HEADER_SIZE)
 
 //获取ziplist的zllen属性
 #define ZIPLIST_LEN(zl)  (*((uint16_t*)((zl) + 2 * sizeof(uint32_t))))
@@ -103,12 +106,6 @@ typedef struct zlentry
     if(ZIPLIST_LEN(zl) < UINT16_MAX)\
         ZIPLIST_LEN(zl) = ZIPLIST_LEN(zl) + incr;\
 }while(0);
-
-//返回ziplist的第一个entry的首地址
-#define ZIPLIST_HEAD_ENTRY_ADDR(zl) ( (zl) + ZIPLIST_HEADER_SIZE)
-
-//返回ziplist的最后一个entry的首地址
-#define ZIPLIST_END_ENTRY_ADDR(zl) ( (zl) + ZIPLIST_TAIL_OFFSET(zl) )
 
 //创建新的压缩列表
 unsigned char* ziplistNew();
@@ -122,4 +119,15 @@ unsigned char *ziplistPushBack(unsigned char *zl, unsigned char *s, unsigned int
 //获取压缩列表的结点个数
 unsigned int ziplistEntryCount(unsigned char* zl);
 
+//返回zl的索引为index的zlentry的指针
+unsigned char* ziplistIndex(unsigned char* zl, int index);
+
+//p指向zl的某个entry,该函数返回该entry的下一个entry
+unsigned char *ziplistNext(unsigned char *zl, unsigned char *p);
+
+//p指向zl的某个entry,该函数返回该entry的前一个entry
+unsigned char *ziplistPrev(unsigned char *zl, unsigned char *p);
+
+//取出p指向的entry的值,字符串保存在sval中,整数值保存在lval中,get成功返回1,如果不是字符串sval是NULL
+unsigned int ziplistGet(unsigned char *p, unsigned char **sval, unsigned int *slen, long long *lval);
 #endif //REDIS_BASIC_ZIPLIST_H
