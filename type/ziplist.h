@@ -136,4 +136,20 @@ unsigned char *ziplistPrev(unsigned char *zl, unsigned char *p);
 
 //取出p指向的entry的值,字符串保存在sval中,整数值保存在lval中,get成功返回1,如果不是字符串sval是NULL
 unsigned int ziplistGet(unsigned char *p, unsigned char **sval, unsigned int *slen, long long *lval);
+
+//删除zl中*p指向的entry,并更新*p指向的位置
+unsigned char *ziplistDelete(unsigned char *zl, unsigned char **p);
+
+//从index索引开始连续删除num个节点
+unsigned char *ziplistDeleteRange(unsigned char *zl, unsigned int index, unsigned int num);
+
+//p指向的entry的content和s进行比较,相等返回1不相等返回0
+unsigned int ziplistCompare(unsigned char *p, unsigned char *s, unsigned int slen);
+
+//寻找和vstr相等的entry,并返回该entry的首指针
+//skip表示每次比对之前都跳过skip个entry
+unsigned char *ziplistFind(unsigned char *p, unsigned char *vstr, unsigned int vlen, unsigned int skip);
+
+//打印ziplist的信息
+void ziplistLog(unsigned char* zl);
 #endif //REDIS_BASIC_ZIPLIST_H

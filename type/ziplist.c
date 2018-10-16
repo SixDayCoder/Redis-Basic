@@ -4,6 +4,7 @@
 
 #include "ziplist.h"
 #include "utlis.h"
+#include <limits.h>
 #include <assert.h>
 
 /*
@@ -435,6 +436,56 @@ static int64_t ziplistLoadInt(unsigned char* pint, unsigned char encoding)
     return ret;
 }
 
+//从p位置开始连续删除num个entry,返回删除之后的ziplist
+static unsigned char* ziplistRemove(unsigned char* zl, unsigned char* p, unsigned int num)
+{
+    zlentry first, tail;
+
+    uint32_t deleted = 0;
+    uint32_t totsize = 0;
+    int nextdiff = 0;
+    first = ziplistEntry(p);
+    for(int i = 0 ; p[0] != ZIP_END_FALG && i < num; ++i)
+    {
+        p += zlentrySize(p);
+        deleted++;
+    }
+
+    //总共删除的bytes
+    totsize = (uint32_t)(p - first.p);
+    if(totsize > 0)
+    {
+        //如果删除num个节点之后,还没有到ziplist的结束标志
+        if(p[0] != ZIP_END_FALG)
+        {
+            nextdiff = ziplistPrevLenByteDiff(p, first.prevlen);
+            p -= nextdiff;
+            zlentryEncodePrevLength(p, first.prevlen);
+            ZIPLIST_TAIL_OFFSET(zl) = ZIPLIST_TAIL_OFFSET(zl) - totsize;
+            tail = ziplistEntry(p);
+            if(p[tail.headersize + tail.len] != ZIP_END_FALG)
+            {
+                ZIPLIST_TAIL_OFFSET(zl) = ZIPLIST_TAIL_OFFSET(zl) + nextdiff;
+            }
+            memmove(first.p, p, ZIPLIST_BYTES(zl) - (p - zl) - 1);
+        }
+        //删除num个节点之后没有节点了
+        else
+        {
+            ZIPLIST_TAIL_OFFSET(zl) = (uint32_t)(first.p - zl - first.prevlen);
+        }
+    }
+
+    size_t offset = first.p - zl;
+    zl = ziplistResize(zl, ZIPLIST_BYTES(zl) - totsize + nextdiff);
+    ZIPLIST_INCR_LENGTH(zl, -deleted);
+    p = zl + offset;
+    if(nextdiff != 0)
+        zl = ziplistCascadeUpdate(zl, p);
+
+    return  zl;
+}
+
 //创建新的压缩列表
 unsigned char* ziplistNew()
 {
@@ -539,7 +590,6 @@ static unsigned char *ziplistInsert(unsigned char *zl, unsigned char *p, unsigne
     }
 
     p += zlentryEncodePrevLength(p, prevlen);
-
     p += zlentryEncodeLength(p, encoding, slen);
 
     if(ZIP_IS_STR_ENCODE(encoding))
@@ -550,8 +600,8 @@ static unsigned char *ziplistInsert(unsigned char *zl, unsigned char *p, unsigne
     {
         ziplistSaveInt(p, val, encoding);
     }
-
     ZIPLIST_INCR_LENGTH(zl, 1);
+
     return zl;
 }
 
@@ -675,4 +725,138 @@ unsigned int ziplistGet(unsigned char *p, unsigned char **sval, unsigned int *sl
     }
 
     return 1;
+}
+
+//删除zl中*p指向的entry,并更新*p指向的位置
+unsigned char *ziplistDelete(unsigned char *zl, unsigned char **p)
+{
+    size_t offset = *p - zl;
+    zl = ziplistRemove(zl, *p, 1);
+    *p = zl + offset;
+    return zl;
+}
+
+//从index索引开始连续删除num个节点
+unsigned char *ziplistDeleteRange(unsigned char *zl, unsigned int index, unsigned int num)
+{
+    unsigned char* p = ziplistIndex(zl, index);
+    return (p == NULL) ? zl : ziplistRemove(zl, p, num);
+}
+
+//p指向的entry的content和s进行比较,相等返回1不相等返回0
+unsigned int ziplistCompare(unsigned char *p, unsigned char *s, unsigned int slen)
+{
+    if(p[0] == ZIP_END_FALG) return 0;
+
+    zlentry e = ziplistEntry(p);
+    if(ZIP_IS_STR_ENCODE(e.encoding))
+    {
+        if(e.len == slen)
+            return memcmp(p + e.headersize, s, slen) == 0 ? 1 : 0;
+    }
+    else
+    {
+        long long sval, zval;
+        unsigned char encoding = 0;
+        if(ziplistTryEncode2Int(s, slen, &sval, &encoding))
+        {
+            zval = ziplistLoadInt(p + e.headersize, e.encoding);
+            return zval == sval;
+        }
+    }
+    return 0;
+}
+
+//寻找和vstr相等的entry,并返回该entry的首指针
+//skip表示每次比对之前都跳过skip个entry
+unsigned char *ziplistFind(unsigned char *p, unsigned char *vstr, unsigned int vlen, unsigned int skip)
+{
+    unsigned char* data = NULL;
+    int skipcnt = 0;
+
+    while(p[0] != ZIP_END_FALG)
+    {
+        long long val = 0;
+        unsigned char encoding = 0;
+        unsigned char vencoding = 0;
+        uint32_t prelensize, lensize, len;
+
+        zlentryDecodePrevLengthSize(p, &prelensize);
+        zlentryDecodeLength(p + prelensize, &encoding, &lensize, &len);
+        data = p + prelensize + lensize;
+        if(skipcnt == 0)
+        {
+            if(ZIP_IS_STR_ENCODE(encoding))
+            {
+                if(len == vlen && memcmp(data, vstr, vlen) == 0) return p;
+            }
+            else
+            {
+                //传入的值有可能被编码,在第一次进行值比对的时候进行解码
+                if(vencoding == 0)
+                {
+                    //如果vstr没有被编码设置vencoding为UCHAR_MAX
+                    if(!ziplistTryEncode2Int(vstr, vlen, &val, &encoding))
+                    {
+                        vencoding = UCHAR_MAX;
+                    }
+                    assert(vencoding);
+                }
+                //说明vstr是被编码过的
+                if(vencoding != UCHAR_MAX)
+                {
+                    long long decodeval = ziplistLoadInt(data, encoding);
+                    if(decodeval == val) return p;
+                }
+            }
+            skipcnt += skip;
+        }
+        else
+        {
+            skipcnt--;
+        }
+
+        //指针后移到下一个entry
+        p = data + len;
+    }
+
+    //没有找到
+    return NULL;
+}
+
+//打印ziplist的信息
+void ziplistLog(unsigned char* zl)
+{
+    printf("{totalbytes : %d, entry count : %d, tail offset : %d\n", ZIPLIST_BYTES(zl), ziplistEntryCount(zl), ZIPLIST_TAIL_OFFSET(zl));
+    unsigned char* p = ZIPLIST_HEAD_ENTRY(zl);
+    char buf[64] = { 0 };
+    int index = 0;
+    zlentry e;
+    while(p[0] != ZIP_END_FALG)
+    {
+        e = ziplistEntry(p);
+        printf("{addr : 0x%08lx, index : %2d, offset : %5ld, rl : %5u, headsize : %2u, prevlen : %5u, prevlensize : %2u, datalen : %5u}",
+               (long unsigned)p,
+               index,
+               (p - zl),
+               e.headersize + e.len,
+               e.headersize,
+               e.prevlen,
+               e.prevlensize,
+               e.len);
+        p += e.headersize;
+        if(ZIP_IS_STR_ENCODE(e.encoding))
+        {
+            memset(buf, 0, sizeof(buf));
+            memcpy(buf, p, e.len);
+            buf[e.len] = '\0';
+            printf(" {string : %s}\n", buf);
+        }
+        else
+        {
+            printf(" {integer : %lld}\n", (long long)ziplistLoadInt(p, e.encoding));
+        }
+        p += e.len;
+        index++;
+    }
 }

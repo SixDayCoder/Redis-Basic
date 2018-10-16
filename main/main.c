@@ -131,49 +131,24 @@ void TestIntSet()
 void TestZiplist()
 {
     unsigned char* zl = ziplistNew();
-
-    ziplistPushBack(zl, (unsigned char*)"500", 3);
-
-    ziplistPushBack(zl, (unsigned char*)"1234", 4);
-
-    ziplistPushBack(zl, (unsigned char*)"123", 3);
-
-    ziplistPushBack(zl, (unsigned char*)"123", 3);
-
-    ziplistPushBack(zl, (unsigned char*)"123", 3);
-
-    ziplistPushBack(zl, (unsigned char*)"123", 3);
-
+    ziplistPushBack(zl, (unsigned char*)"1024", 4);
+    ziplistPushBack(zl, (unsigned char*)"sixday", 6);
     ziplistPushBack(zl, (unsigned char*)"123456789123456789123456789", 27);
-
     ziplistPushBack(zl, (unsigned char*)"xxxx500", 7);
+    ziplistPushBack(zl, (unsigned char*)"hello", 5);
+    for(int i = 0 ; i < 5; ++i)
+        ziplistPushHead(zl, (unsigned char*)"12345", 5);
+    printf("\n After push\n");
+    ziplistLog(zl);
 
-    ziplistPushBack(zl, (unsigned char*)"hello", 4);
+    unsigned char* pos = ziplistFind(zl, (unsigned char*)"sixday", 6, 0);
+    zl = ziplistDelete(zl, &pos);
+    printf("\nAfter delete sixday\n");
+    ziplistLog(zl);
 
-    printf("total bytes is : %d, length is : %d\n", ZIPLIST_BYTES(zl), ziplistEntryCount(zl));
-
-    unsigned char* str = NULL;
-    unsigned int slen = 0;
-    long long val = 0;
-    char buf[1024] = {0};
-    for(int i = 0 ; i  < ziplistEntryCount(zl); ++i)
-    {
-        unsigned char* x = ziplistIndex(zl, i);
-        if(ziplistGet(x, &str, &slen, &val))
-        {
-            if(str)
-            {
-                memset(buf, 0, sizeof(buf));
-                memcpy(buf, str, slen);
-                buf[slen] = '\0';
-                printf("index : %d is string : %s\n", i, buf);
-            }
-            else
-            {
-                printf("index : %d is int : %lld\n", i, val);
-            }
-        }
-    }
+    zl = ziplistDeleteRange(zl, 3, 3);
+    printf("\n After delete range\n");
+    ziplistLog(zl);
 }
 
 int main()
