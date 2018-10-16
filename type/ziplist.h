@@ -23,6 +23,12 @@
 //判断给定编码是否是字符串编码
 #define ZIP_IS_STR_ENCODE(encode) (  ( (encode) & ZIP_ENCODING_STR_MASK ) < ZIP_ENCODING_STR_MASK )
 
+//获取p指向的entry的encoding信息,存储在encoding中
+#define ZIP_ENTRY_ENCODING(ptr, encoding) do {\
+    (encoding) = ptr[0];\
+    if( (encoding) < ZIP_ENCODING_STR_MASK) (encoding) &= ZIP_ENCODING_STR_MASK;\
+}while(0);\
+
 //字符串编码类型,0XB表示字符串的长度有几位, 06B表示字符串的长度用6个bits可以装下
 #define ZIP_STR_06B (0 << 6)
 #define ZIP_STR_14B (1 << 6)
