@@ -37,4 +37,7 @@ unsigned int LRU();
 
 //字符串转为longlong,成功返回1否则返回0
 int string2ll(const char* s, size_t slen, long long* val);
+
+//获取当前时间的秒和毫秒
+void getTime(long long* second, long long* millisecond);
 #endif //REDIS_BASIC_UTLIS_H

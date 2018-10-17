@@ -8,6 +8,7 @@
 #include "intset.h"
 #include "ziplist.h"
 #include "utlis.h"
+#include "event.h"
 
 unsigned int TestHashFunction (const void* key)
 {
@@ -151,8 +152,15 @@ void TestZiplist()
     ziplistLog(zl);
 }
 
+void TestServer()
+{
+    EventLoop* el = createEventLoop(128);
+    startEventLoop(el);
+}
+
 int main()
 {
     TestZiplist();
+    TestServer();
     return 0;
 }

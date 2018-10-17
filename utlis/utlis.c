@@ -5,6 +5,7 @@
 #include "utlis.h"
 #include <limits.h>
 #include <sys/time.h>
+#include <time.h>
 
 //unix时间戳:微秒
 long long ustime()
@@ -159,4 +160,13 @@ int string2ll(const char* s, size_t slen, long long* val)
         *val = v;
     }
     return 1;
+}
+
+//获取当前时间的秒和毫秒
+void getTime(long long* second, long long* millisecond)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    *second = tv.tv_sec;
+    *millisecond = tv.tv_usec / 1000;
 }

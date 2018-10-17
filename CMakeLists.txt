@@ -6,6 +6,7 @@ INCLUDE_DIRECTORIES(memory)
 INCLUDE_DIRECTORIES(type)
 INCLUDE_DIRECTORIES(object)
 INCLUDE_DIRECTORIES(utlis)
+INCLUDE_DIRECTORIES(network)
 ADD_EXECUTABLE(
         redis_basic
         main/main.c
@@ -18,4 +19,5 @@ ADD_EXECUTABLE(
         type/intset.h   type/intset.c
         type/ziplist.h  type/ziplist.c
         object/object.h object/object.c
-        utlis/utlis.h utlis/utlis.c )
+        network/event.h network/event.c network/select.c
+        utlis/utlis.h utlis/utlis.c)
