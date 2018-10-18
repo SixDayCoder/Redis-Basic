@@ -51,7 +51,6 @@ static int apiPoll(EventLoop* eventLoop, struct timeval* tvp)
     memcpy(&data->twfds, &data->wfds, sizeof(fd_set));
     int readyCnt = 0;
     int ret = select(eventLoop->maxfd + 1, &data->trfds, &data->twfds, NULL, tvp);
-    printf("poll\n");
     if(ret > 0)
     {
         for(int i = 0 ; i < eventLoop->maxfd; ++i)

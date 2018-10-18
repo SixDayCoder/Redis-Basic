@@ -15,6 +15,43 @@
 //#include <winsock2.h>
 //#include <ws2tcpip.h>
 
+
+/*
+ * struct addrinfo
+ *
+ * 1.ai_flags : 指示如何处理地址和名字
+ * AI_NUMERICHOST -> 以数字方式返回主机地址
+ * AI_PASSIVE     -> 用于bind,一般用于server socket
+ * AI_CANONNAME   -> 返回主机的规范名称
+ * SO On
+ *
+ * 2.ai_family : 地址家族
+ *   AF_INET
+ *   AF_INET6
+ *   AF_UNIX : unix域
+ *   AF_UNSPEC : 未指定,也称协议无关(IPV4 and IPV6)
+ *
+ * 3.ai_socktype
+ * SOCK_DGRAM  : UDP
+ * SOCK_STREAM : TCP
+ *
+ * 4.ai_protocol
+ * IPPROTO_IPV4
+ * IPPROTO_IPV6
+ * IPPROTO_TCP
+ * IPPROTO_UDP
+ * 建议的使用方式 : 仅使用flag, family, socktype, protocol, 其他域memset为0
+ *
+ * //支持ipv4和ipv6,获取主机的地址信息,存放在result中
+ * getaddrinfo(const char* node, const char* servername, const struct addrinfo* hints, struct addrinfo** result)
+ * 1.node : 主机名(www.baidu.com)或者是点分十进制的ip(127.0.0.1)地址, 如果hints->ai_flag = AI_NUMERICHOST, 那么node只能是点分十进制的地址
+ * 2.servername : 可以是十进制的端口号port(8888), 也可以是"ftp","http"这种固定端口号的服务,可以设置成NULL
+ * 3.hints  : 用户设定,只能设定flag, family, socktype, protocol, 其他域memset为0
+ * 4.result : 解析之后的结果信息,必须用freeaddrinfo()来释放掉
+ *
+ * getaddrinfo()执行失败的retval可以使用gai_strerror(retval)来获取错误信息
+ */
+
 static void netSetError(char *errmsg, const char *fmt, ...)
 {
     if(!errmsg) return;
@@ -22,6 +59,34 @@ static void netSetError(char *errmsg, const char *fmt, ...)
     va_start(ap, fmt);
     vsnprintf(errmsg, NET_ERROR_LEN, fmt, ap);
     va_end(ap);
+    printf("%s\n", errmsg);
+}
+
+
+//设置地址为可重用
+
+/*  关于地址重用
+ *  作用 :
+ *  端口复用防止服务器重启时之前绑定的端口还未释放或者程序突然退出而系统没有释放端口。
+ *  这种情况下如果设定了端口复用，则新启动的服务器进程可以直接绑定端口
+ *
+ *  使用方式 :
+ *  必须在(每次!)bind之前设置地址复用:
+ *  fd = socket(xx, xx, xx);
+ *  int on = 1;
+ *  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on))
+ *  bind(fd)
+ *  listen(fd)
+ */
+
+static int netSetAddrReuseable(int fd, char *errmsg)
+{
+    int yes = 1;
+    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
+        netSetError(errmsg, "setsocketopt SO_REUSEADDR: %s", strerror(errno));
+        return NET_ERR;
+    }
+    return NET_OK;
 }
 
 static int netCommonAccept(int sock, struct sockaddr *sa, socklen_t *len, char *errmsg)
@@ -44,19 +109,6 @@ static int netCommonAccept(int sock, struct sockaddr *sa, socklen_t *len, char *
     return fd;
 }
 
-//设置地址为可重用
-static int netSetAddrReuseable(int fd, char *errmsg)
-{
-    int yes = 1;
-    //TODO:explain
-    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1)
-    {
-        netSetError(errmsg, "setsocketopt SO_REUSEADDR: %s", strerror(errno));
-        return NET_ERR;
-    }
-    return NET_OK;
-}
-
 static int netBindAndListen(int sock, struct sockaddr *sa, socklen_t len, int backlog, char *errmsg)
 {
     if(bind(sock, sa, len) == -1)
@@ -65,49 +117,46 @@ static int netBindAndListen(int sock, struct sockaddr *sa, socklen_t len, int ba
         close(sock);
         return NET_ERR;
     }
-
     if(listen(sock, backlog) == -1)
     {
         netSetError(errmsg, "listen : %s", strerror(errno));
         close(sock);
         return NET_ERR;
     }
-
     return NET_OK;
 }
 
 static int netCommonTCPServer(int port, char *bindaddr, int backlog, int af, char *errmsg)
 {
     char portbuf[6]; // strlen(65536)
-    snprintf(portbuf, 6, "%d", port);
+    snprintf(portbuf, sizeof(portbuf), "%d", port);
 
     struct addrinfo hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = af;
     hints.ai_socktype = SOCK_STREAM;
-    hints.ai_flags = AI_PASSIVE; //TODO : explain
+    hints.ai_flags = AI_PASSIVE;//用于bind的socket
 
-    //TODO:explain
     struct addrinfo *servinfo;
     int retval = 0;
     if( (retval = getaddrinfo(bindaddr, portbuf, &hints, &servinfo)) != 0)
     {
         netSetError(errmsg, "%s", gai_strerror(retval));
+        freeaddrinfo(servinfo);
+        return NET_ERR;
     }
-
     struct addrinfo* p;
     int sock = 0;
     for(p = servinfo; p != NULL; p = p->ai_next)
     {
-        if((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1)
+        if((sock = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
             continue;
-        if(netSetAddrReuseable(sock, errmsg) == NET_ERR)
-        {
+        }
+        if(netSetAddrReuseable(sock, errmsg) == NET_ERR) {
             freeaddrinfo(servinfo);
             return NET_ERR;
         }
-        if(netBindAndListen(sock, p->ai_addr, p->ai_addrlen, backlog, errmsg) == NET_ERR)
-        {
+        if(netBindAndListen(sock, p->ai_addr, p->ai_addrlen, backlog, errmsg) == NET_ERR) {
             freeaddrinfo(servinfo);
             return NET_ERR;
         }
@@ -115,7 +164,6 @@ static int netCommonTCPServer(int port, char *bindaddr, int backlog, int af, cha
         freeaddrinfo(servinfo);
         return sock;
     }
-
     if(p == NULL)
     {
         netSetError(errmsg, "unable to bind socket");
@@ -137,7 +185,7 @@ static int netCommonTCPServer(int port, char *bindaddr, int backlog, int af, cha
 static int netCommonTCPConnect(char* addr, int port, char* srcaddr, int flags, char* errmsg)
 {
     char portbuf[6]; //strlen("65536")
-    snprintf(portbuf, 6, "%d", port);
+    snprintf(portbuf, sizeof(portbuf), "%d", port);
 
     struct addrinfo hints;
     struct addrinfo* servinfo;
@@ -221,7 +269,6 @@ static int netParseHostAddress(char* host, char* ipbuf, uint32_t ipbuflen, int f
     struct addrinfo *info;
     memset(&hints, 0, sizeof(hints));
 
-    //TODO:explain
     if (flags > 0) hints.ai_flags = AI_NUMERICHOST;
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;

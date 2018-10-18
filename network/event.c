@@ -258,7 +258,6 @@ static int executeTimeEvents(EventLoop* eventLoop)
             {
                 deleteTimeEvent(eventLoop, te->id);
             }
-
             //执行事件之后,事件列表可能已经被改变,将te放回表头继续执行
             te = eventLoop->timeEventHead;
         }
@@ -267,7 +266,6 @@ static int executeTimeEvents(EventLoop* eventLoop)
             te = te->next;
         }
     }
-
     return processed;
 }
 
@@ -290,7 +288,7 @@ int executeEvents(EventLoop *eventLoop, int eventType)
         struct timeval tv;
         struct timeval *tvp = &tv;
         TimeEvent* nearest = findNearestTimer(eventLoop);
-        //判断是否可以执行时间事件
+        //判断是否可以立即执行时间事件
         if(nearest)
         {
             long long nowSec = 0;
@@ -311,7 +309,7 @@ int executeEvents(EventLoop *eventLoop, int eventType)
                 tvp->tv_usec = 0;
             }
         }
-        //判断是否可以执行文件事件
+        //判断是否可以立即执行文件事件
         else
         {
             //不阻塞立即执行

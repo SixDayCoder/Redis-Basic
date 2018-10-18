@@ -11,14 +11,16 @@ ADD_EXECUTABLE(
         redis_basic
         main/main.c
         memory/memory.h memory/memory.c
-        type/sds.h  type/sds.c
-        type/list.h type/list.c
-        type/dict.h type/dict.c
-        type/hash.h type/hash.c
+        type/sds.h      type/sds.c
+        type/list.h     type/list.c
+        type/dict.h     type/dict.c
+        type/hash.h     type/hash.c
         type/skiplist.h type/skiplist.c
         type/intset.h   type/intset.c
         type/ziplist.h  type/ziplist.c
         object/object.h object/object.c
-        network/event.h network/event.c network/select.c
+        utlis/utlis.h   utlis/utlis.c
+        network/event.h   network/event.c network/select.c
         network/network.h network/network.c
-        utlis/utlis.h utlis/utlis.c network/handler.h network/handler.c)
+        network/handler.h network/handler.c
+        )
