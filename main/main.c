@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include <hash.h>
+#include <unistd.h>
+#include "hash.h"
 #include "sds.h"
 #include "list.h"
 #include "hash.h"
@@ -9,6 +10,8 @@
 #include "ziplist.h"
 #include "utlis.h"
 #include "event.h"
+#include "network.h"
+#include "handler.h"
 
 unsigned int TestHashFunction (const void* key)
 {
@@ -154,13 +157,31 @@ void TestZiplist()
 
 void TestServer()
 {
-    EventLoop* el = createEventLoop(128);
+    int serverfd = 0;
+    const char* ip = "127.0.0.1";
+    int port = 7777;
+    int backlog = 5;
+    char errmsg[NET_ERROR_LEN] = { 0 };
+    serverfd = netTCPServer(port, ip, backlog, errmsg);
+    if(serverfd == NET_ERR){
+        printf("create tcp server fail\n");
+        exit(1);
+    }
+    netSetNonBlock(serverfd, errmsg);
+
+    EventLoop *el = createEventLoop(128);
+    if(createFileEvent(el, serverfd, FILE_EVENT_READABLE, acceptTCPHandler, NULL) == NET_ERR){
+        printf("add file event fail\n");
+        exit(1);
+    }
+    printf("el maxfd : %d\n", el->maxfd);
     startEventLoop(el);
+    releaseEventLoop(el);
+    close(serverfd);
 }
 
 int main()
 {
-    TestZiplist();
     TestServer();
     return 0;
 }

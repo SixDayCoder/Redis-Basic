@@ -27,7 +27,6 @@ long long mstime()
 //获取LRU时间
 unsigned int LRU()
 {
-    //TODO:
     unsigned int ret =  ( (unsigned int)mstime() / 1000 ) & ( (1 << 24) - 1) ;
     return ret;
 }

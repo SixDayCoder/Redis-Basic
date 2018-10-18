@@ -7,9 +7,9 @@
 
 #include <time.h>
 
-#define NET_OK (0)
+#define EVENT_OK (0)
 
-#define NET_ERR (-1)
+#define EVENT_ERR (-1)
 
 //文件事件的状态字
 #define FILE_EVENT_NONE (0)
@@ -32,6 +32,8 @@
 #define EVENT_TYPE_ALL  ( EVENT_TYPE_FILE | EVENT_TYPE_TIME )
 
 #define EVENT_TYPE_DONT_WAIT (4)
+
+#define NETWORK_NOTUSED(param) ((void)param)
 
 struct EventLoop;
 typedef void FileEventCallBack(struct EventLoop* eventLoop, int fd, void* clientData, int mask);

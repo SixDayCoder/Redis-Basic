@@ -20,4 +20,5 @@ ADD_EXECUTABLE(
         type/ziplist.h  type/ziplist.c
         object/object.h object/object.c
         network/event.h network/event.c network/select.c
-        utlis/utlis.h utlis/utlis.c)
+        network/network.h network/network.c
+        utlis/utlis.h utlis/utlis.c network/handler.h network/handler.c)

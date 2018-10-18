@@ -206,7 +206,6 @@ void dictClear(dict* d)
 //计算安全指纹
 long long dictFingerprint(dict *d)
 {
-    //TODO:
     return 0;
 }
 

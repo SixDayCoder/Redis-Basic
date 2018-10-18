@@ -79,12 +79,11 @@ int createFileEvent(EventLoop* eventLoop, int fd, int mask, FileEventCallBack* f
     if(fd >= eventLoop->setsize)
     {
         errno = ERANGE;
-        return NET_ERR;
+        return EVENT_ERR;
     }
-
     FileEvent* event = &eventLoop->fileEvents[fd];
     //监听fd指定的事件
-    if(addEvent(eventLoop, fd, mask) == -1) return NET_ERR;
+    if(addEvent(eventLoop, fd, mask) == -1) return EVENT_ERR;
 
     event->mask |= mask;
     if(mask & FILE_EVENT_READABLE) event->readCallBack = fileEventCallBack;
@@ -94,7 +93,7 @@ int createFileEvent(EventLoop* eventLoop, int fd, int mask, FileEventCallBack* f
     //如果有必要更新事件循环的最大fd
     if(fd > eventLoop->maxfd) eventLoop->maxfd = fd;
 
-    return NET_OK;
+    return EVENT_OK;
 }
 
 //将fd从mask指定的监听队列中删除(mask指示了哪种类型)
@@ -154,7 +153,7 @@ long long createTimeEvent(EventLoop* eventLoop, long long millseconds, TimeEvent
     long long id = eventLoop->timeEventNextId + 1;
 
     TimeEvent* te = zmalloc(sizeof(*te));
-    if(te == NULL) return NET_ERR;
+    if(te == NULL) return EVENT_ERR;
 
     te->id = id;
 
@@ -189,12 +188,12 @@ int deleteTimeEvent(EventLoop *eventLoop, long long id)
             }
             if(te->finalizerCallBack) te->finalizerCallBack(eventLoop, te->clientData);
             zfree(te);
-            return NET_OK;
+            return EVENT_OK;
         }
         prev = te;
         te = te->next;
     }
-    return NET_ERR;
+    return EVENT_ERR;
 }
 
 //寻找当前时间点可以执行的时间事件
@@ -363,7 +362,7 @@ int eventLoopWait(int fd, int mask, long long milliseconds)
     struct pollfd pfd;
     memset(&pfd, 0, sizeof(pfd));
     pfd.fd = fd;
-    if(mask & FILE_EVENT_READABLE) pfd.events |= POLLIN;
+    if(mask & FILE_EVENT_READABLE)   pfd.events |= POLLIN;
     if(mask & FILE_EVENT_WRITEBABLE) pfd.events |= POLLOUT;
 
     int retmask = 0;
@@ -394,8 +393,8 @@ void startEventLoop(EventLoop* eventLoop)
 //调整事件循环的intsize
 int resizeSetSize(EventLoop* eventLoop, int setsize)
 {
-    if(setsize  == eventLoop->setsize) return NET_OK;
-    if(eventLoop->maxfd >= setsize) return NET_ERR;
+    if(setsize  == eventLoop->setsize) return EVENT_OK;
+    if(eventLoop->maxfd >= setsize) return EVENT_ERR;
 
     apiResize(eventLoop, setsize);
     eventLoop->fileEvents = zrealloc(eventLoop->fileEvents, sizeof(FileEvent) * setsize);
@@ -404,5 +403,5 @@ int resizeSetSize(EventLoop* eventLoop, int setsize)
     //初始化新添加的FD的mask是NONE
     for(int i = eventLoop->maxfd + 1; i < setsize; ++i)
         eventLoop->fileEvents[i].mask = FILE_EVENT_NONE;
-    return NET_OK;
+    return EVENT_OK;
 }
