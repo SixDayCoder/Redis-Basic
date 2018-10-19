@@ -7,6 +7,7 @@ INCLUDE_DIRECTORIES(type)
 INCLUDE_DIRECTORIES(object)
 INCLUDE_DIRECTORIES(utlis)
 INCLUDE_DIRECTORIES(network)
+INCLUDE_DIRECTORIES(redis)
 ADD_EXECUTABLE(
         redis_basic
         main/main.c
@@ -23,4 +24,4 @@ ADD_EXECUTABLE(
         network/event.h   network/event.c network/select.c
         network/network.h network/network.c
         network/handler.h network/handler.c
-        )
+        redis/redis.h redis/redis.c)

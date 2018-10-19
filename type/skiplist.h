@@ -117,3 +117,29 @@ unsigned long slGetRank(skiplist* sl, double score, object* obj);
 skiplistNode* slGetNodeByRank(skiplist* sl, unsigned long rank);
 
 #endif //REDIS_BASIC_SKIPLIST_H
+
+//void TestSkipList()
+//{
+//    object* o1 = createObject(OBJECT_TYPE_STRING, sdsnew("123"));
+//    object* o2 = createObject(OBJECT_TYPE_STRING, sdsnew("456"));
+//    object* o3 = createObject(OBJECT_TYPE_STRING, sdsnew("789"));
+//    object* o4 = createObject(OBJECT_TYPE_STRING, sdsnew("111"));
+//
+//    skiplist* sl = slCreate();
+//    slInsert(sl, 1.0, o1);
+//    slInsert(sl, 3.0, o2);
+//    slInsert(sl, 2.0, o3);
+//    slInsert(sl, 0.0, o4);
+//
+//    printf("len : %lu\n", sl->length);
+//    printf("rank o1 : %lu, rank o2 : %lu, rank o3 : %lu, rank o4 : %lu\n", slGetRank(sl, 1.0, o1), slGetRank(sl, 3.0, o2), slGetRank(sl, 2.0, o3), slGetRank(sl, 0.0, o4));
+//
+//
+//    skiplistRange range;
+//    range.minScore = 0.0;
+//    range.maxScore = 10.0;
+//    range.minInclude = 1;
+//    range.maxInclude = 1;
+//    slDeleteRangeByScore(sl, &range);
+//    printf("delete range : len : %lu\n", sl->length);
+//}

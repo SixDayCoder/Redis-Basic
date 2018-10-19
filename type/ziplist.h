@@ -153,3 +153,26 @@ unsigned char *ziplistFind(unsigned char *p, unsigned char *vstr, unsigned int v
 //打印ziplist的信息
 void ziplistLog(unsigned char* zl);
 #endif //REDIS_BASIC_ZIPLIST_H
+
+//void TestZiplist()
+//{
+//    unsigned char* zl = ziplistNew();
+//    ziplistPushBack(zl, (unsigned char*)"1024", 4);
+//    ziplistPushBack(zl, (unsigned char*)"sixday", 6);
+//    ziplistPushBack(zl, (unsigned char*)"123456789123456789123456789", 27);
+//    ziplistPushBack(zl, (unsigned char*)"xxxx500", 7);
+//    ziplistPushBack(zl, (unsigned char*)"hello", 5);
+//    for(int i = 0 ; i < 5; ++i)
+//        ziplistPushHead(zl, (unsigned char*)"12345", 5);
+//    printf("\n After push\n");
+//    ziplistLog(zl);
+//
+//    unsigned char* pos = ziplistFind(zl, (unsigned char*)"sixday", 6, 0);
+//    zl = ziplistDelete(zl, &pos);
+//    printf("\nAfter delete sixday\n");
+//    ziplistLog(zl);
+//
+//    zl = ziplistDeleteRange(zl, 3, 3);
+//    printf("\n After delete range\n");
+//    ziplistLog(zl);
+//}

@@ -51,3 +51,38 @@ uint32_t intsetValEncodingType(int64_t v);
 
 
 #endif //REDIS_BASIC_INTSET_H
+
+//void TestIntSet()
+//{
+//    intset* is = intsetNew();
+//    printf("init\n");
+//    printf("len is %u, totalsize is %lu, encoding is %u\n", is->length, intsetBlobLen(is), is->encoding);
+//
+//    uint8_t success = 0;
+//    for(int i = 0 ; i < 100; ++i)
+//    {
+//        int64_t val = (i % 2 == 0) ? ( (i - 31432) * 123 + 432 ) : (i * 3124 - 78);
+//        is = intsetAdd(is, val, &success);
+//    }
+//    int count = 0;
+//    //upgrade
+//    printf("--------------------------------------------------------------------------------------------\n");
+//    int64_t v = 312312331343432;
+//    is = intsetAdd(is, v, &success);
+//    printf("after upgrade : len is %u, totalsize is %lu, encoding is %u\n", is->length, intsetBlobLen(is), is->encoding);
+//    v = 0;
+//    intsetGet(is, is->length - 1, &v);
+//    printf("max is %lld\n", v);
+//    for(int i = 0 ; i < is->length; i++)
+//    {
+//        int64_t val = 0;
+//        intsetGet(is, i, &val);
+//        printf("%lld ", (long long)val);
+//        count++;
+//        if(count == 10)
+//        {
+//            printf("\n");
+//            count = 0;
+//        }
+//    }
+//}

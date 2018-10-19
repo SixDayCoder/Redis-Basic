@@ -18,10 +18,8 @@ int netTCP6Server(int port, char *bindaddr, int backlog, char *errmsg);
 
 int netTCPAccept(int serversock, char *ip, uint32_t iplen, int *port, char *errmsg);
 
-
 //创建非阻塞TCP链接
 int netTCPNonBlockConnect(char* addr, int port, char* errmsg);
-
 
 //设置fd为非阻塞
 int netSetNonBlock(int fd, char* errmsg);

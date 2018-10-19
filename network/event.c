@@ -163,7 +163,7 @@ long long createTimeEvent(EventLoop* eventLoop, long long millseconds, TimeEvent
     te->finalizerCallBack = finalizerCallBack;
     te->clientData = clientData;
     te->next = eventLoop->timeEventHead;
-    eventLoop->timeEventHead->next = te;
+    eventLoop->timeEventHead = te;
     eventLoop->timeEventNextId = id;
     return id;
 }
