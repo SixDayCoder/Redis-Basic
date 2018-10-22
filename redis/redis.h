@@ -52,8 +52,6 @@ typedef struct redisServer
 
 } redisServer;
 
-redisServer gServer;
-
 int listenToPort(redisServer* server);
 
 void closeListenSockets(redisServer* server);

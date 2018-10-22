@@ -5,6 +5,8 @@
 #include <string.h>
 #include "redis.h"
 
+redisServer gServer;
+
 void initServerConfig();
 
 void initServer();
@@ -66,7 +68,7 @@ void initServer()
     struct sigaction action;
     sigemptyset(&action.sa_mask);
     action.sa_flags = 0;
-    action.sa_handler = NULL;
+    action.sa_handler = sigtermHandler;
     sigaction(SIGTERM, &action, NULL);
 
     if(gServer.port != 0 && listenToPort(&gServer) == NET_ERR) {
@@ -77,7 +79,7 @@ void initServer()
         exit(1);
     }
     //create time event
-    long long mills = 1;
+    long long mills = 100;
     if(createTimeEvent(gServer.eventLoop, mills, serverTimer, NULL, NULL) == NET_ERR){
         printf("add time event fail\n");
         exit(1);
@@ -103,10 +105,11 @@ int serverTimer(struct EventLoop* eventLoop, long long id, void* clientData)
     if(gServer.shutDownASAP) {
         shutdownServer(&gServer);
     }
-
     //clientTimer
 
     //dbTimer
+
+    // time log
     time_t now = time(NULL);
     struct tm* info = localtime(&now);
     printf("now : %s\n", asctime(info));

@@ -150,13 +150,9 @@ static void addMillsOnNow(long long millseconds, long long *sec, long long* ms)
 //创建时间事件,返回其id
 long long createTimeEvent(EventLoop* eventLoop, long long millseconds, TimeEventCallBack* timeEventCallBack, void* clientData, EventFinalizerCallBack* finalizerCallBack)
 {
-    long long id = eventLoop->timeEventNextId + 1;
-
     TimeEvent* te = zmalloc(sizeof(*te));
     if(te == NULL) return EVENT_ERR;
-
-    te->id = id;
-
+    te->id = eventLoop->timeEventNextId++;
     //时间事件在millseconds毫秒后触发
     addMillsOnNow(millseconds, &te->whenSec, &te->whenMs);
     te->timeCallBack = timeEventCallBack;
@@ -164,8 +160,7 @@ long long createTimeEvent(EventLoop* eventLoop, long long millseconds, TimeEvent
     te->clientData = clientData;
     te->next = eventLoop->timeEventHead;
     eventLoop->timeEventHead = te;
-    eventLoop->timeEventNextId = id;
-    return id;
+    return te->id;
 }
 
 //删除时间事件
