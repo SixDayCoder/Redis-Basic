@@ -126,7 +126,6 @@ int getFileEventsMask(EventLoop* eventLoop, int fd)
     return eventLoop->fileEvents[fd].mask;
 }
 
-
 //将millsecons毫秒加到当前时间,返回值写在sec和ms中
 static void addMillsOnNow(long long millseconds, long long *sec, long long* ms)
 {
@@ -379,7 +378,7 @@ void startEventLoop(EventLoop* eventLoop)
     {
         if(eventLoop->beforeSleepCallBack)
             eventLoop->beforeSleepCallBack(eventLoop);
-        executeEvents(eventLoop, EVENT_TYPE_ALL);
+        executeEvents(eventLoop, EVENT_TYPE_ALL | EVENT_TYPE_DONT_WAIT);
     }
 }
 

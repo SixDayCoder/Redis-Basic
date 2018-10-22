@@ -436,5 +436,52 @@ int netTCPNonBlockConnect(char* addr, int port, char* errmsg)
     return netCommonTCPConnect(addr, port, NULL, NET_CONNECT_NONBLOCK, errmsg);
 }
 
+//打开或关闭Nagle
+int netSetTCPNoDelay(int fd, int open, char* errmsg)
+{
+    if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &open, sizeof(open)) == -1) {
+        netSetError(errmsg, "setsockopt : TCP_NODELAY : %s", strerror(errno));
+        return NET_ERR;
+    }
+    return NET_OK;
+}
 
+//修改keepalve选项
+int netKeepAlive(int fd, int interval, char* errmsg)
+{
+    int val = 1;
+    if( setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val) == -1) ) {
+        netSetError(errmsg, "setsockopt SO_KEEPALIVE: %s", strerror(errno));
+        return NET_ERR;
+    }
+
+#ifdef REDIS_LINUX
+    /* Send first probe after interval. */
+    val = interval;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val)) < 0) {
+        netSetError(errmsg, "setsockopt TCP_KEEPIDLE: %s\n", strerror(errno));
+        return NET_ERR;
+    }
+
+    /* Send next probes after the specified interval. Note that we set the
+     * delay as interval / 3, as we send three probes before detecting
+     * an error (see the next setsockopt call). */
+    val = interval/3;
+    if (val == 0) val = 1;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val)) < 0) {
+        netSetError(errmsg, "setsockopt TCP_KEEPINTVL: %s\n", strerror(errno));
+        return NET_ERR;
+    }
+
+    /* Consider the socket in error state after three we send three ACK
+     * probes without getting a reply. */
+    val = 3;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val)) < 0) {
+        netSetError(errmsg, "setsockopt TCP_KEEPCNT: %s\n", strerror(errno));
+        return NET_ERR;
+    }
+#endif
+
+    return NET_OK;
+}
 

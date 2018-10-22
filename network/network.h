@@ -36,5 +36,10 @@ int netGetServerSockName(int fd, char* ip, uint32_t iplen, int *port);
 //获取链接的客户端的IP和端口号
 int netGetPeerName(int fd, char* ip, uint32_t iplen, int* port);
 
+//打开或关闭Nagle
+int netSetTCPNoDelay(int fd, int open, char* errmsg);
+
+//修改keepalve选项
+int netKeepAlive(int fd, int interval, char* errmsg);
 
 #endif //REDIS_BASIC_NETWORK_H

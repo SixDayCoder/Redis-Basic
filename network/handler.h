@@ -15,4 +15,6 @@
 
 void acceptTCPHandler(EventLoop* eventLoop, int fd, void* privadata, int mask);
 
+void recvFromClient(EventLoop* eventLoop, int fd, void* privadata, int mask);
+
 #endif //REDIS_BASIC_HANDLER_H

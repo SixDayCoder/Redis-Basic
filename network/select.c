@@ -53,7 +53,7 @@ static int apiPoll(EventLoop* eventLoop, struct timeval* tvp)
     int ret = select(eventLoop->maxfd + 1, &data->trfds, &data->twfds, NULL, tvp);
     if(ret > 0)
     {
-        for(int i = 0 ; i < eventLoop->maxfd; ++i)
+        for(int i = 0 ; i <= eventLoop->maxfd; ++i)
         {
             int mask = 0;
             FileEvent* e = &eventLoop->fileEvents[i];
