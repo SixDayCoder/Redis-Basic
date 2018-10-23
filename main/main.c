@@ -115,8 +115,8 @@ int serverTimer(struct EventLoop* eventLoop, long long id, void* clientData)
     //dbTimer
 
     // time log
-    time_t now = time(NULL);
-    struct tm* info = localtime(&now);
+    //time_t now = time(NULL);
+    //struct tm* info = localtime(&now);
     //printf("now : %s\n", asctime(info));
     //返回调用间隔
     return 100;

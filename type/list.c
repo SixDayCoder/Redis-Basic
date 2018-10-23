@@ -95,7 +95,7 @@ list* listPushTail(list *ls, void* value)
 //将值为value的node插在old_node的前面或后面,由after决定
 list* listInsertNode(list *ls, listNode *oldnode, void *value, int after)
 {
-    if(!ls || !value || !oldnode) return ls;
+    if(!ls || !value) return ls;
 
     listNode *node = zmalloc(sizeof(*node));
     node->value = value;

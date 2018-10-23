@@ -47,8 +47,11 @@ redisClient* createClient(int fd)
 
     cli->lastinteraction = 0;
 
-    cli->replaypos = 0;
+    cli->replypos = 0;
 
+    cli->reply = listCreate();
+
+    cli->sendlen = 0;
 
     listPushTail(gServer.clients, cli);
 }
@@ -61,6 +64,9 @@ void releaseClient(redisClient* c)
 
     sdsfree(c->querybuf);
     c->querybuf = NULL;
+
+    listRealease(c->reply);
+    c->reply = NULL;
 
     if(c->fd != -1) {
         deleteFileEvent(gServer.eventLoop, c->fd, FILE_EVENT_READABLE);
@@ -78,9 +84,25 @@ void releaseClient(redisClient* c)
 
 void processInput(redisClient* c)
 {
-    if(sdslen(c->querybuf)) {
-        printf("input is %s\n", c->querybuf);
+    //TODO:添加一个echo回复给client
+    char recv[256] = { 0 };
+    memcpy(recv, c->querybuf, sdslen(c->querybuf));
+    recv[sdslen(c->querybuf)] = '\0';
+    printf("i recv : %s\n", recv);
+
+    time_t now = time(NULL);
+    struct tm* info = localtime(&now);
+    sds r = sdsnew(asctime(info));
+    r = sdscat(r, recv);
+    listPushHead(c->reply, r);
+
+    //添加文件写时间,下一次时间循环触发
+    if( createFileEvent(gServer.eventLoop, c->fd, FILE_EVENT_WRITEBABLE, sendToClient, c) == -1) {
+        printf("create write file event error\n");
+        return;
     }
+    //最后清除querybuf的内容
+    sdsclear(c->querybuf);
 }
 
 /*------------------------------------------------------impl redis server------------------------------------------------------------*/

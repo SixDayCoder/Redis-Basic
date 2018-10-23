@@ -49,9 +49,13 @@ typedef struct redisClient
     sds querybuf;
 
     //回复缓冲区
-    int replaypos;
+    int  replypos;
 
-    char replaybuf[REDIS_CLIENT_REPLAY_CHUNCK_SIZE];
+    char replybuf[REDIS_CLIENT_REPLAY_CHUNCK_SIZE];
+
+    list* reply;
+
+    int sendlen;
 
 } redisClient;
 

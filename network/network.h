@@ -40,6 +40,9 @@ int netGetPeerName(int fd, char* ip, uint32_t iplen, int* port);
 int netSetTCPNoDelay(int fd, int open, char* errmsg);
 
 //修改keepalve选项
+//keepalive只能检测对端的链接是否存在(只要对端没有发FIN),不能检测是否可用
+//举例:某client死锁,但是client所在的os还是会发送tcp报文,server就不知道client是坏的
+//应用层的心跳包十分有必要
 int netKeepAlive(int fd, int interval, char* errmsg);
 
 #endif //REDIS_BASIC_NETWORK_H
