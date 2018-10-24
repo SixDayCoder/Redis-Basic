@@ -4,10 +4,65 @@
 
 #include "object.h"
 #include "sds.h"
-#include "list.h"
-#include "dict.h"
+#include "utlis.h"
 
+#include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
+
+
+static int sdsKeyCompare(void *privdata, const void *lkey, const void* rkey)
+{
+    size_t lkeylen = sdslen((sds)lkey);
+    size_t rkeylen = sdslen((sds)rkey);
+    if(lkeylen != rkeylen) {
+        return 0;
+    }
+    return memcmp(lkey, rkey, lkeylen) == 0;
+}
+
+//key只能是string或者是int
+unsigned int encObjHash(const void* key)
+{
+    object* o = (object*)key;
+    if(SDS_ENCODING_OBJECT(o)) {
+        return MurmurHash2(o->ptr, (int)sdslen((sds)o->ptr));
+    } else {
+        if(o->encoding == OBJECT_ENCODING_INT) {
+            char buf[32];
+            int len = ll2string(buf, 32, (long)o->ptr);
+            return MurmurHash2((unsigned char*)buf, len);
+        } else {
+            o = getRawDecodeObject(o);
+            unsigned int hash = MurmurHash2(o->ptr, (int)sdslen((sds)o->ptr));
+            //getRawDecodeObject会incrCnt
+            decRefCnt(o);
+            return hash;
+        }
+    }
+}
+
+int encObjKeyCompare(void *privdata, const void *lkey, const void* rkey)
+{
+    object* lo = (object*)lkey;
+    object* ro = (object*)rkey;
+
+    if(lo->encoding == OBJECT_ENCODING_INT && ro->encoding == OBJECT_ENCODING_INT) {
+        return lo->ptr == ro->ptr;
+    }
+    lo = getRawDecodeObject(lo);
+    ro = getRawDecodeObject(ro);
+    int cmp = sdsKeyCompare(privdata, lo->ptr, ro->ptr);
+    decRefCnt(lo);
+    decRefCnt(ro);
+    return cmp;
+}
+
+void encObjDtor(void* privdata, void* val)
+{
+    if(val == NULL) return;
+    decRefCnt(val);
+}
 
 object* createObject(int type, void* ptr)
 {
@@ -17,65 +72,8 @@ object* createObject(int type, void* ptr)
     obj->encoding = OBJECT_ENCODING_RAW;
     obj->ptr = ptr;
     obj->refcnt = 1;
-    obj->lru = 0;
-}
-
-void releaseStringObject(object* obj)
-{
-    if(obj->encoding == OBJECT_ENCODING_RAW)
-    {
-        sdsfree(obj->ptr);
-    }
-}
-
-void releaseListObject(object* obj)
-{
-    switch(obj->encoding)
-    {
-        case OBJECT_ENCODING_LINKED_LIST:
-            listRealease( (list*)obj->ptr);
-            break;
-        case OBJECT_ENCODING_ZIPLIST:
-            zfree(obj->ptr);
-            break;
-        default:
-            exit(1);
-    }
-}
-
-void releaseSetObject(object* obj)
-{
-    switch(obj->encoding)
-    {
-        case OBJECT_ENCODING_HASH_TABLE:
-            dictRelease( (dict*) obj->ptr);
-            break;
-        case OBJECT_ENCODING_INTSET:
-            zfree(obj->ptr);
-            break;
-        default:
-            exit(1);
-    }
-}
-
-void releaseZSetObject(object* obj)
-{
-    //TODO:
-}
-
-void releaseHashTableObject(object* obj)
-{
-    switch(obj->encoding)
-    {
-        case OBJECT_ENCODING_HASH_TABLE:
-            dictRelease( (dict*) obj->ptr);
-            break;
-        case OBJECT_ENCODING_ZIPLIST:
-            zfree(obj->ptr);
-            break;
-        default:
-            exit(1);
-    }
+    obj->lru = LRU();
+    return obj;
 }
 
 void incRefCnt(object* obj)
@@ -91,10 +89,10 @@ void decRefCnt(object* obj)
         switch (obj->type)
         {
             case OBJECT_TYPE_STRING: releaseStringObject(obj); break;
-            case OBJECT_TYPE_LIST: releaseListObject(obj); break;
-            case OBJECT_TYPE_SET:  releaseSetObject(obj); break;
-            case OBJECT_TYPE_ZSET: releaseZSetObject(obj); break;
-            case OBJECT_TYPE_HASH: releaseHashTableObject(obj); break;
+            case OBJECT_TYPE_LIST:   releaseListObject(obj); break;
+            case OBJECT_TYPE_SET:    releaseSetObject(obj); break;
+            case OBJECT_TYPE_ZSET:   releaseZSetObject(obj); break;
+            case OBJECT_TYPE_HASH:   releaseHashTableObject(obj); break;
             default: exit(1);
         }
         zfree(obj);
@@ -105,23 +103,20 @@ void decRefCnt(object* obj)
     }
 }
 
-//对象转换为字符串进行比较
-int compareStringObject(object* lhs, object* rhs)
+//以新对象的形式返回输入对象的RAW编码,如果本身就是raw编码的那么输入对象的refcnt+1,返回输入对象
+object* getRawDecodeObject(object* o)
 {
-    //TODO:
-    return 0;
-}
-
-//如果两个对象在字符串形式上相等返回1
-int equalStringObject(object* lhs, object* rhs)
-{
-    if(lhs->encoding == OBJECT_ENCODING_INT && rhs->encoding == OBJECT_ENCODING_INT)
-    {
-        return lhs->ptr == rhs->ptr;
+    if(SDS_ENCODING_OBJECT(o)) {
+        incRefCnt(o);
+        return o;
     }
-    else
-    {
-        //转换为字符串对象进行比较
-        return compareStringObject(lhs, rhs) == 0;
+    //decode
+    if(o->type == OBJECT_TYPE_STRING && o->encoding == OBJECT_ENCODING_INT) {
+        char buf[32];
+        int len = ll2string(buf, 32, (long)o->ptr);
+        object* dec = createStringObject(buf, (size_t)len);
+        return dec;
     }
+    //error
+    printf("unknown encoding type\n");
 }

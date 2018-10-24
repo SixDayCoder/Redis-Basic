@@ -3,6 +3,7 @@
 //
 
 #include "skiplist.h"
+#include "object.h"
 
 //随机一个层数返回,根据随机算法所使用的幂次定律，越大的值生成的几率越小
 int slRandomLevel(void)

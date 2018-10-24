@@ -3,6 +3,7 @@
 //
 
 #include "utlis.h"
+#include <string.h>
 #include <limits.h>
 #include <sys/time.h>
 #include <time.h>
@@ -30,73 +31,6 @@ unsigned int LRU()
     unsigned int ret =  ( (unsigned int)mstime() / 1000 ) & ( (1 << 24) - 1) ;
     return ret;
 }
-
-////16bit小端转大端
-//void memrev16(void* p)
-//{
-//    unsigned char* x = p;
-//    unsigned char  t = 0;
-//    t = x[0];
-//    x[0] = x[1];
-//    x[1] = t;
-//}
-//
-////32bit小端转大端
-//void memrev32(void* p)
-//{
-//    unsigned char* x = p;
-//    unsigned char  t = 0;
-//    t = x[0];
-//    x[0] = x[3];
-//    x[3] = t;
-//
-//    t = x[1];
-//    x[1] = x[2];
-//    x[2] = t;
-//}
-//
-////64bit小端转大端
-//void memrev64(void* p)
-//{
-//    unsigned char* x = p;
-//    unsigned char  t = 0;
-//    t = x[0];
-//    x[0] = x[7];
-//    x[7] = t;
-//
-//    t = x[1];
-//    x[1] = x[6];
-//    x[6] = t;
-//
-//    t = x[2];
-//    x[2] = x[5];
-//    x[5] = t;
-//
-//    t = x[3];
-//    x[3] = x[4];
-//    x[4] = t;
-//}
-//
-////16bit的unsigned int, 小端转大端
-//uint16_t intrev16(uint16_t v)
-//{
-//    memrev16(&v);
-//    return v;
-//}
-//
-////32bit的unsigned int, 小端转大端
-//uint32_t intrev32(uint32_t v)
-//{
-//    memrev32(&v);
-//    return v;
-//}
-//
-////64bit的unsigned int, 小端转大端
-//uint64_t intrev64(uint64_t v)
-//{
-//    memrev64(&v);
-//    return v;
-//}
 
 //字符串转为longlong,成功返回1否则返回0
 int string2ll(const char* s, size_t slen, long long* val)
@@ -159,6 +93,35 @@ int string2ll(const char* s, size_t slen, long long* val)
         *val = v;
     }
     return 1;
+}
+
+//long long转为字符串,成功返回1,否则返回0
+int ll2string(char *s, size_t len, long long value)
+{
+    //31 + 1(符号位)
+    char buf[32], *p;
+    unsigned long long v;
+    size_t l;
+
+    if (len == 0) return 0;
+    v = (value < 0) ? -value : value;
+    p = buf + 31; /* point to the last character */
+    do {
+        *p-- = '0' + (v % 10);
+        v /= 10;
+    } while(v);
+    if (value < 0) {
+        *p-- = '-';
+    }
+    p++;
+
+    l = 32 - (p - buf);
+    if (l + 1 > len) {
+        l = len-1; /* Make sure it fits, including the nul term */
+    }
+    memcpy(s, p, l);
+    s[l] = '\0';
+    return (int)l;
 }
 
 //获取当前时间的秒和毫秒

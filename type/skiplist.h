@@ -6,7 +6,8 @@
 #define REDIS_BASIC_SKIPLIST_H
 
 #include "memory.h"
-#include "object.h"
+
+struct object;
 
 struct skiplistNode;
 
@@ -26,7 +27,7 @@ struct skiplistNodeLevel
 typedef struct skiplistNode
 {
     //结点保存的对象
-    object* obj;
+    struct object* obj;
 
     //分值,排序用
     double score;
@@ -74,7 +75,7 @@ typedef struct skiplistRange
 int slRandomLevel(void);
 
 //创建层数为level的跳跃表的节点
-skiplistNode* slCreateNode(int level, double score, object* obj);
+skiplistNode* slCreateNode(int level, double score, struct object* obj);
 
 //释放跳表节点
 void slReleaseNode(skiplistNode* node);
@@ -95,13 +96,13 @@ skiplistNode *slFirstInRange(skiplist *sl, skiplistRange *range);
 skiplistNode *slLastInRange(skiplist *sl, skiplistRange *range);
 
 //跳表sl插入新的节点
-skiplistNode* slInsert(skiplist *sl, double score, object* obj);
+skiplistNode* slInsert(skiplist *sl, double score, struct object* obj);
 
 //删除函数,被delete, deleteRangeByScore, deleteByRank调用
 void slDeleteNode(skiplist* sl, skiplistNode* node, skiplistNode** update);
 
 //跳表sl删除值为obj的节点(score还得相同)
-int slDelete(skiplist *sl, double score, object* obj);
+int slDelete(skiplist *sl, double score, struct object* obj);
 
 //删除所有在分值范围内的元素
 unsigned long slDeleteRangeByScore(skiplist* sl, skiplistRange* range);
@@ -111,35 +112,9 @@ unsigned long slDeleteRangeByRank(skiplist* sl, unsigned int start, unsigned int
 
 //查询给定分值和对象的结点在跳表中的排位置
 //由于head节点也被计算在内,所以rank以1位起始
-unsigned long slGetRank(skiplist* sl, double score, object* obj);
+unsigned long slGetRank(skiplist* sl, double score, struct object* obj);
 
 //根据排位获取跳表中的节点
 skiplistNode* slGetNodeByRank(skiplist* sl, unsigned long rank);
 
 #endif //REDIS_BASIC_SKIPLIST_H
-
-//void TestSkipList()
-//{
-//    object* o1 = createObject(OBJECT_TYPE_STRING, sdsnew("123"));
-//    object* o2 = createObject(OBJECT_TYPE_STRING, sdsnew("456"));
-//    object* o3 = createObject(OBJECT_TYPE_STRING, sdsnew("789"));
-//    object* o4 = createObject(OBJECT_TYPE_STRING, sdsnew("111"));
-//
-//    skiplist* sl = slCreate();
-//    slInsert(sl, 1.0, o1);
-//    slInsert(sl, 3.0, o2);
-//    slInsert(sl, 2.0, o3);
-//    slInsert(sl, 0.0, o4);
-//
-//    printf("len : %lu\n", sl->length);
-//    printf("rank o1 : %lu, rank o2 : %lu, rank o3 : %lu, rank o4 : %lu\n", slGetRank(sl, 1.0, o1), slGetRank(sl, 3.0, o2), slGetRank(sl, 2.0, o3), slGetRank(sl, 0.0, o4));
-//
-//
-//    skiplistRange range;
-//    range.minScore = 0.0;
-//    range.maxScore = 10.0;
-//    range.minInclude = 1;
-//    range.maxInclude = 1;
-//    slDeleteRangeByScore(sl, &range);
-//    printf("delete range : len : %lu\n", sl->length);
-//}

@@ -10,20 +10,29 @@ INCLUDE_DIRECTORIES(
         network
         redis
 )
-ADD_EXECUTABLE(
-        redis_basic
+
+SET(
+        SRC_FILES
         main/main.c
-        memory/memory.h memory/memory.c
-        type/sds.h      type/sds.c
-        type/list.h     type/list.c
-        type/dict.h     type/dict.c
-        type/hash.h     type/hash.c
-        type/skiplist.h type/skiplist.c
-        type/intset.h   type/intset.c
-        type/ziplist.h  type/ziplist.c
-        object/object.h object/object.c
-        utlis/utlis.h   utlis/utlis.c
-        network/event.h   network/event.c network/select.c
-        network/network.h network/network.c
-        network/handler.h network/handler.c
-        redis/redis.h redis/redis.c)
+        redis/redis.c
+        memory/memory.c
+        utlis/utlis.c
+        type/sds.c
+        type/list.c
+        type/dict.c
+        type/hash.c
+        type/skiplist.c
+        type/intset.c
+        type/ziplist.c
+        network/event.c
+        network/select.c
+        network/network.c
+        network/handler.c
+        object/object.c
+        object/object_zset.c
+        object/object_list.c
+        object/object_string.c
+        object/object_hash.c
+        object/object_set.c)
+
+ADD_EXECUTABLE(redis_basic ${SRC_FILES})

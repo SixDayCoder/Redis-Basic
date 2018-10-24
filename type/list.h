@@ -69,7 +69,7 @@ typedef struct list
 #define LIST_MATCH_METHOD(_list) ( (_list)->match )
 
 #define LIST_SET_DUP_METHOD(_list, _method) ( (_list)->dup = (method) )
-#define LIST_SET_FREE_METHOD(_list, _method) ( (_list)->free = (method) )
+#define LIST_SET_FREE_METHOD(_list, _method) ( (_list)->free = (_method) )
 #define LIST_SET_MATCH_METHOD(_list, _method) ( (_list)->match = (method) )
 
 #define LIST_NODE_PREV(_node) ( (_node)->prev )
