@@ -312,7 +312,9 @@ unsigned long slGetRank(skiplist* sl, double score, object* obj)
     unsigned long rank = 0;
     for(int i = sl->maxlevel - 1; i >= 0; i--)
     {
-        while(curr->level[i].forward && (curr->level[i].forward->score < score))
+        while(curr->level[i].forward &&
+              ( curr->level[i].forward->score < score ||
+              ( curr->level[i].forward->score == score && compareStringObject(curr->level[i].forward->obj, obj) < 0)))
         {
             //累积跨越的结点数目
             rank += curr->level[i].span;
