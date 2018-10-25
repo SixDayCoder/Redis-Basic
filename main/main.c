@@ -1,13 +1,20 @@
 #include <stdio.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+
 #include "redis.h"
+#include "handler.h"
+
 
 
 /*-------------------------------------------global redis server---------------------------------------------------*/
 extern redisServer gServer;
+extern hashMethod DBDictHashMethod;
+extern hashMethod DBExpireHashMethod;
+extern hashMethod SetObjectDictHashMethod;
+extern hashMethod KeyListHashMethod;
 
 void initServer();
 
@@ -70,12 +77,28 @@ void initServer()
     gServer.ipfdCount = 0;
     memset(gServer.neterrmsg, 0, sizeof(gServer.neterrmsg));
 
-    //1.init server struct
+    //1.init server states
+    resetServerStates(&gServer);
+
+    //2.init server db
+    gServer.dbnum = 1;
+    gServer.db = zmalloc(sizeof(redisDB) * gServer.dbnum);
+    for(int i = 0 ; i < gServer.dbnum; ++i) {
+        gServer.db[i].dict = dictCreate(&DBDictHashMethod, NULL);
+        gServer.db[i].expires = dictCreate(&DBExpireHashMethod, NULL);
+        gServer.db[i].blockkeys = dictCreate(&KeyListHashMethod, NULL);
+        gServer.db[i].readykeys = dictCreate(&SetObjectDictHashMethod, NULL);
+        gServer.db[i].watchedkeys = dictCreate(&KeyListHashMethod, NULL);
+        gServer.db[i].id = i;
+        gServer.db[i].avgttl = 0;
+    }
+
+    //3.init server struct
     gServer.currClient = NULL;
     gServer.clients = listCreate();
     gServer.clients_to_close = listCreate();
 
-    //2.listen and add event
+    //4.listen and add event
     if(gServer.port != 0 && listenToPort(&gServer) == NET_ERR) {
         exit(1);
     }

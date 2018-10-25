@@ -14,7 +14,6 @@ INCLUDE_DIRECTORIES(
 SET(
         SRC_FILES
         main/main.c
-        redis/redis.c
         memory/memory.c
         utlis/utlis.c
         type/sds.c
@@ -33,6 +32,10 @@ SET(
         object/object_list.c
         object/object_string.c
         object/object_hash.c
-        object/object_set.c)
+        object/object_set.c
+        redis/redis_server.c
+        redis/redis_client.c
+        redis/redis_db.c
+        redis/redis_notify.c)
 
 ADD_EXECUTABLE(redis_basic ${SRC_FILES})

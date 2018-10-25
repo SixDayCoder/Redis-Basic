@@ -23,6 +23,24 @@ enum
     OBJECT_TYPE_HASH = 4,
 };
 
+//sorted struct : (hashtable, intset, skiplist)
+
+//TYPE_STRING -> INT  == (val <= long and val is int)
+//TYPE_STRING -> RAW  == (val is string and val.len >= some_config_val)
+//TYPE_STRINg -> EMBSTR == (val is string and val.len < some_config_val) PS : just one malloc, and embstr is readable only
+
+//TYPE_LIST  -> ZIPLIST == (all elements.len <= 64 bytes and object_list.len <= 512)
+//TYPE_LIST  -> LINKED_LIST == !(all elemetns.len <= 64 bytes and object_list.len >= 512)
+
+//TYPE_HASH  -> ZIPLIST == (all keys.len and vals.len <= 64 bytes and object_hash.count_of(key, val) <= 512)
+//TYPE_HASH  -> HASH_TABLE == !(all keys.len and vals.len <= 64 bytes and object_hash.count_of(key, val) <= 512)
+
+//TYPE_SET  -> INTSET == (all elements is int and object_set.len <= 512)
+//TYPE_SET  -> HASH_TABLE == !(all elements is int and object_set.len <= 512)
+
+//TYPE_ZSET -> ZIPLIST == (all elements.length <= 64 bytes and object_zset.len <= 128)
+//TYPE_ZSET -> SKIPLIST == !(all elements.length <= 64 bytes and object_zset.len <= 128)
+
 enum
 {
     OBJECT_ENCODING_RAW = 0,

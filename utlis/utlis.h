@@ -9,9 +9,11 @@
 #include <sys/types.h>
 
 //unix时间戳:微秒
+typedef long long ustime_t;
 long long ustime();
 
 //unix时间戳:毫秒
+typedef long long mstime_t;
 long long mstime();
 
 //获取LRU时间
