@@ -15,7 +15,7 @@ typedef struct APIData {
 } APIData;
 
 static int createAPIData(EventLoop *eventLoop) {
-    APIData *data = zmalloc(sizeof(EventLoop));
+    APIData *data = zmalloc(sizeof(APIData));
     if (!data) return -1;
     FD_ZERO(&data->rfds);
     FD_ZERO(&data->wfds);
